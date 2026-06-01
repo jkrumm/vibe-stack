@@ -18,12 +18,17 @@ The owner says any of: *"veröffentlichen"*, *"online stellen"*, *"deploy"*, *"g
 The starter's `deploy` script (in `package.json`) is:
 
 ```
-npm run deploy  →  build  +  wrangler d1 migrations apply DB --remote  +  wrangler deploy
+npm run deploy  →  validate (format + types + build + tests)  +  wrangler d1 migrations apply DB --remote  +  wrangler deploy
 ```
 
-So a single command **builds** the app, **applies pending database migrations to the LIVE database**
-(keeping the live data structure in sync with the code), and **publishes**. You never apply remote
-migrations by hand — `deploy` does it. Run it from the project folder.
+So a single command first **checks everything** (`npm run validate`: Biome, type-check, build, and the
+tests) — if any check fails, **nothing is published**, so a broken app can't go live — then **applies
+pending database migrations to the LIVE database** (keeping the live data structure in sync with the
+code) and **publishes**. You never apply remote migrations by hand — `deploy` does it. Run it from the
+project folder.
+
+If `validate` fails, read the cause, fix it, run `npm run fix` + `npm run validate` until green, then
+deploy. Tell the owner in one calm German sentence that you found and fixed something first.
 
 ## Steps — publish
 

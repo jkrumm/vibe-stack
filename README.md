@@ -39,8 +39,10 @@ you don't install anything by hand. **This kit targets macOS.**
 
 ## ▶️ So fängst du an / How to start
 
-Open the **Code** tab in the Claude desktop app and paste one sentence — swap the description for
-whatever *your* app should be:
+1. In the Claude desktop app, open the **Code** tab, choose **Local**, click **Select folder**, and
+   pick (or create) a new **empty** folder — for example `vibe-app` in your home folder. *(Claude
+   needs a folder to work in; until you pick one there's no chat box.)*
+2. In that folder's chat, paste one sentence — swap the description for whatever *your* app should be:
 
 > **„Richte mir bitte ein neues Vibe-Stack-Projekt ein und folge dabei
 > github.com/jkrumm/vibe-stack. Meine App soll ein Mahlzeiten-Tagebuch werden, in dem ich Essen
@@ -66,7 +68,8 @@ guided step at a time, in plain German. You just answer its questions and click 
   forms, tables, and graphs look good without you styling anything.
 - **One command to publish:** you say *"deploy"* and your app is live for everyone, on every device.
 - **Claude already knows this stack.** The starter ships with skills and rules so Claude builds the
-  *right* way every time and doesn't drift.
+  *right* way every time, and it **tests and checks every change** before telling you it's done — so a
+  broken version can't go live.
 
 ---
 

@@ -24,22 +24,29 @@ one Worker serves a React SPA *and* a Hono API, backed by D1 (database) and R2 (
    knowledge base. No shared cross-app DB, no microservices, no second deploy target.
 2. **Single Worker.** The Hono API and the React SPA ship from one Worker in one `wrangler deploy`.
    Never split into Pages + Workers. No CORS, no second URL.
-3. **Hybrid skills.** Cloudflare/Wrangler skills install into the owner's `~/.claude/skills/`
-   (global, reused across their apps); Mantine/React/forms/data/charts skills + rules live
-   per-project under `boilerplate/.claude/`. Installed by **copying files**, never `npx skills
-   add -g` (see verified facts).
+3. **Hybrid skills + rules.** Cloudflare/Wrangler skills install into the owner's `~/.claude/skills/`
+   (global, reused across their apps); per-project skills, `.claude/rules/`, and `test/` live under
+   `boilerplate/`. The official **Mantine v9** skills are vendored into `boilerplate/.claude/skills/`.
+   Everything is installed by **copying files**, never `npx skills add -g` (see verified facts).
 4. **Ship a ready boilerplate.** The owner gets `boilerplate/` copied into a fresh folder
    (deterministic), not a from-scratch scaffold. Keep it current (see "Keeping current").
 5. **Target Claude Pro + the desktop app's Code tab** (no terminal) as the primary path.
+6. **The agent validates, then claims done.** The boilerplate ships a real test + lint + build gate
+   (`npm run validate`) and `boilerplate/CLAUDE.md` makes running it non-negotiable before the agent
+   tells the owner anything works. Bulletproofing the agent's self-check is a first-class goal.
 
 ## Repository layout
 
 | Path | Purpose |
 |-|-|
-| `README.md` | Human-facing intro + the one paste-line. Ends with a pointer telling Claude to read `ONBOARDING.md`. |
-| `ONBOARDING.md` | The guided, **milestone-based** setup Claude runs for a new owner. The heart of the product. |
-| `boilerplate/` | The Cloudflare-optimized starter app (single Worker + Hono + D1 + R2, Mantine v9 + `@mantine/charts`). Self-contained, committed, runnable. |
-| `boilerplate/.claude/` | Per-project skills + rules vendored into every owner project. |
+| `README.md` | Human-facing intro + the one paste-line + where to literally start (Code tab → Select folder). Ends with a pointer telling Claude to read `ONBOARDING.md`. |
+| `ONBOARDING.md` | The guided, **milestone-based** 7-phase setup Claude runs for a new owner. The heart of the product. |
+| `boilerplate/` | The Cloudflare-optimized starter app (single Worker + Hono + D1 + R2, Mantine v9 + `@mantine/charts`, Vitest + Biome). Self-contained, committed, runnable. |
+| `boilerplate/CLAUDE.md` | The always-on agent contract: German communication, the validate-before-done loop, hard rules, verified facts. |
+| `boilerplate/.claude/skills/` | Per-project how-to skills (add-page/data/chart/form) + vendored Mantine v9 skills. |
+| `boilerplate/.claude/rules/` | Path-scoped edit-time conventions (`ui.md`, `worker-data.md`, `testing.md`). |
+| `boilerplate/test/` | Workerd integration tests (`@cloudflare/vitest-pool-workers`) + setup. |
+| `boilerplate/biome.jsonc` | The single formatter/linter config. `boilerplate/.mcp.json.example` | optional chrome-devtools MCP. |
 | `skills-global/` | Cloudflare/Wrangler skills the onboarding copies into `~/.claude/skills/`. |
 
 ## Verified tech facts — do NOT regress (verified 2026-06-01)
@@ -52,26 +59,53 @@ training knowledge. **Re-verify with `/research` before changing any of them** (
   `@mantine/charts/styles.css` *after* `@mantine/core/styles.css`. PostCSS via
   `postcss-preset-mantine` + `postcss-simple-vars` in `postcss.config.cjs`. Client-only SPA needs
   no `ColorSchemeScript`; set `defaultColorScheme` on `MantineProvider`.
-- **Cloudflare single Worker + SPA:** scaffold parity comes from `@cloudflare/vite-plugin` (builds
-  SPA → `dist/client`, Worker → `dist/<name>`, auto-fills `assets.directory` — so omit it). Routing
-  in `wrangler.jsonc`: `assets.not_found_handling: "single-page-application"` +
+- **Cloudflare single Worker + SPA:** scaffold parity comes from `@cloudflare/vite-plugin` (1.39.1;
+  builds SPA → `dist/client`, Worker → `dist/<name>`, auto-fills `assets.directory` — so omit it).
+  Routing in `wrangler.jsonc`: `assets.not_found_handling: "single-page-application"` +
   `assets.run_worker_first: ["/api/*"]` (array form needs Wrangler ≥ 4.20.0). `compatibility_date`
-  must be a real recent date.
+  must be a real recent date. **Stay on Vite 7**: Vite 8 + `@cloudflare/vite-plugin` still has open
+  build-breaking issues (see "Keeping current" for the Vite+ note).
 - **Hono is not in Cloudflare's template** — add it. Worker entry is `export default app` (the Hono
-  instance). With `run_worker_first: ["/api/*"]` the asset layer serves the SPA without invoking the
-  Worker, so Hono needs **no** `*` SPA fallback. Bindings via `new Hono<{ Bindings }>()`, read from
-  `c.env.DB` / `c.env.BUCKET`. Validation: `@hono/zod-validator` + `zod`.
+  instance, `basePath('/api')`). With `run_worker_first: ["/api/*"]` the asset layer serves the SPA
+  without invoking the Worker, so Hono needs **no** `*` SPA fallback. Bindings via
+  `new Hono<{ Bindings }>()`, read from `c.env.DB` / `c.env.BUCKET`. Validation: a `zod` schema in
+  `src/shared/schema.ts`, `safeParse`d in the route (the boilerplate does **not** use
+  `@hono/zod-validator` — it parses multipart via `c.req.parseBody()` then `safeParse`).
+- **Testing runs in the real Workers runtime** via **`@cloudflare/vitest-pool-workers` 0.16.11**,
+  which requires **vitest ^4.1.0**. The current API: config uses the **`cloudflareTest()` plugin**
+  from `@cloudflare/vitest-pool-workers` (NOT the old `defineWorkersConfig`); tests
+  `import { env, exports } from 'cloudflare:workers'` and call **`exports.default.fetch(...)`** (NOT
+  `SELF` from `cloudflare:test`); `readD1Migrations` is imported from `@cloudflare/vitest-pool-workers`
+  and migrations are applied in a setup file via `applyD1Migrations` (still from `cloudflare:test`).
+  Real local D1 + R2. The pre-0.16 API is obsolete — verified against the workers-sdk D1 fixture.
+- **Lint/format is Biome** (`@biomejs/biome` pinned **2.4.16**, single binary, config `biome.jsonc`,
+  `$schema` URL is version-locked — bump both together). One command formats + lints + organizes
+  imports. We deliberately do **not** use ESLint/Prettier or oxlint+oxfmt (oxfmt is pre-1.0).
+- **Claude Code rules/skills mechanics:** `.claude/rules/*.md` **is** a real Claude Code feature
+  (auto-loads each session). A `paths:` glob in the frontmatter scopes a rule — but path-scoped rules
+  fire on **Read, not Write/create** (workers-sdk-style gotcha, GH #23478 not-planned). So: create-time
+  guardrails live in `boilerplate/CLAUDE.md` (always-on) and in skills (intent-triggered); `paths:`
+  rules are edit-time reinforcement only. SKILL.md frontmatter: `name` + a third-person `description`
+  (what + WHEN); only those preload, the body loads on demand.
+- **chrome-devtools MCP** (`chrome-devtools-mcp` 1.1.1, Node engines `^20.19||^22.12||>=23`) ships as
+  an **optional, off-by-default** `boilerplate/.mcp.json.example` (`--isolated --headless`,
+  project-scoped so Claude approval-gates it). The agent uses it to screenshot the running app and
+  read the console. The core path must work without it. This is **not** "Claude for Chrome".
 - **R2 has a gate the others don't:** enabling R2 requires completing a checkout / "add R2
   subscription" flow that in practice needs a **payment method on file**, even though usage stays
   free. D1, Workers, and Static Assets do not. The onboarding must warn the owner this is a
   one-time verification, not a bill.
-- **Claude Pro ($20/mo, ≈ €20 + VAT) includes Claude Code** — confirmed; it is *not* Max-gated; the
-  Free plan cannot use it. Don't quote a fixed "€20" rate card or name specific Pro model versions.
-- **Skills distribution:** `npx skills` (vercel-labs/skills) is real and the upstream repos exist
-  (`cloudflare/skills`, `mantinedev/skills` — default branch **`master`** — `secondsky/claude-skills`),
-  but `npx skills add -g` has a symlink bug (#851) that hides globally-installed skills from Claude
-  Code. **We vendor skills by copying files.** Pulling upstream skills *into a project* (`.claude/skills/`,
-  no `-g`) is fine as an optional depth-add.
+- **First deploy** on a fresh account interactively asks to register a free `workers.dev` subdomain
+  (answer yes), and the new URL can briefly 523 (~1 min). The onboarding warns about both.
+- **Claude Pro includes Claude Code** — confirmed; *not* Max-gated; the Free plan cannot use it.
+  Don't quote a fixed "€20" rate card or name specific Pro model versions. The desktop **Code tab**
+  requires selecting a folder before there's a prompt box, and has a built-in **Preview** pane.
+- **Skills distribution:** `npx skills` (vercel-labs/skills, npm v1.5.9) is real; upstream repos
+  exist (`cloudflare/skills` — branch **`main`**; `mantinedev/skills` — branch **`master`**, 3
+  Mantine v9 skills; `secondsky/claude-skills`). `npx skills add -g` still has the symlink bug (#851,
+  OPEN) that hides globally-installed skills from Claude Code. **We vendor by copying** (`--copy`,
+  project scope). Pulling upstream skills into a project (`.claude/skills/`, no `-g`) is the
+  documented on-demand depth-add.
 
 ## Conventions
 
@@ -85,12 +119,20 @@ training knowledge. **Re-verify with `/research` before changing any of them** (
 ## Keeping current
 
 The boilerplate is a frozen snapshot, so it can drift. When updating: run `/research` on the moving
-pieces (Mantine, Wrangler/Vite plugin, Hono, Cloudflare assets config, Claude plan facts), refresh
+pieces (Mantine, Wrangler/`@cloudflare/vite-plugin`, Hono, Cloudflare assets config, Vitest +
+`@cloudflare/vitest-pool-workers`, Biome, chrome-devtools-mcp, Claude plan + desktop facts), refresh
 the "Verified tech facts" block with a new date, then update `boilerplate/` and the skills to match.
+
+- **Vite+ (viteplus.dev):** evaluated 2026-06-01 → **not adopted**. It's free (MIT) but alpha
+  (v0.1.x) and ships Vite 8, which `@cloudflare/vite-plugin` does not yet support cleanly
+  (workers-sdk #11530/#12497/#11948). Re-evaluate only once Vite+ reaches 1.0/GA **and** the
+  Cloudflare plugin officially supports the Vite major Vite+ ships.
 
 ## Validating a change to the boilerplate
 
-From `boilerplate/`: `npm install`, then `npm run build` (Vite + Worker bundle) and
-`npx wrangler types` must pass. Don't run `npm run dev` for the user. Prefer `/check` for
-format/lint/typecheck. A real end-to-end deploy needs a Cloudflare account, so smoke-test the build,
-not the deploy, in this repo.
+From `boilerplate/`: `npm install`, then **`npm run validate`** (Biome CI + `wrangler types` + `tsc`
++ `vite build` + the Vitest workerd tests) must pass. `npm run fix` auto-formats. The tests run the
+real Worker against local D1 + R2, so they are the closest thing to a deploy you can run here. If the
+chrome-devtools MCP is available you can additionally seed local data, run `npm run dev`, and
+screenshot the app to confirm icons/charts render — but **don't leave a dev server running**. A real
+end-to-end deploy needs a Cloudflare account, so smoke-test the build + tests, not the deploy.

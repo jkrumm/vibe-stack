@@ -150,8 +150,10 @@ migrations to the live database automatically before publishing.)
 npm run deploy
 ```
 
-When it succeeds, Wrangler prints a public URL
-(`https://<new-app-name>.<subdomain>.workers.dev`). Celebrate:
+`deploy` first checks everything (format, types, build, tests), so a broken app can't go live, then
+publishes. When it succeeds, Wrangler prints a public URL
+(`https://<new-app-name>.<subdomain>.workers.dev`). Confirm it actually loads (open it via the
+chrome-devtools MCP if connected, otherwise ask the owner), then celebrate:
 
 > *"🎉 Deine neue App ist live! Öffne diesen Link auf deinem Handy oder Laptop: <URL>."*
 

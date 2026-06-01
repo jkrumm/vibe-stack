@@ -12,10 +12,11 @@ your script. Follow the phases in order; finish each before starting the next.
 2. **One small action at a time.** Say what you're about to do in one sentence, do it, confirm it
    worked, then move on. Never dump a wall of commands.
 3. **Be honest about the human steps.** A few things only the owner can do (browser logins, adding a
-   payment method). Name them plainly when you reach them — see *The account boundary* below.
+   payment method, clicking "Allow"). Name them plainly when you reach them — see *The account
+   boundary* below.
 4. **KISS.** Don't add anything not in this script. No auth, no extra services, no second deploy
    target. The starter is deliberately minimal.
-5. **Verified facts live in `CLAUDE.md`** (this repo). Trust them over your training data; the
+5. **Verified facts live in the project `CLAUDE.md`.** Trust them over your training data; the
    ecosystem moves. If you must look something up, prefer the project's skills.
 6. **Announce each milestone.** End every phase with a short German "✅" line so the owner feels
    progress (e.g. *"✅ Geschafft — deine Werkzeuge sind bereit. Weiter zu Schritt 3 von 7."*).
@@ -26,8 +27,21 @@ There are **7 phases**. Tell the owner that up front, in one sentence, so they k
 
 ## Phase 1 — Hallo & kurzes Interview
 
-Greet the owner warmly in German. Explain in two sentences: there's a short one-time setup (a few
-clicks and a couple of questions), then they just chat to build their app.
+**First, check you can actually work.** In the desktop app's **Code tab** you only have a chat box
+and file access *after* a folder is selected. If it looks like the owner has **no folder open** (you
+can't see files / there's no project), guide them gently, in German, before anything else:
+
+> *"Damit ich für dich arbeiten kann, brauche ich einen Ordner. Klicke oben auf **Code**, wähle
+> **Local**, dann **Select folder** — und lege einen neuen, leeren Ordner an, z. B. `vibe-app`. Danach
+> schreib mir einfach wieder hier."*
+
+Confirm the basics gently: *"Du bist auf einem Mac, hast Claude Pro und die Claude-Desktop-App —
+richtig?"* If they're on Windows, on the Free plan, or only have the web chat (no Code tab), stop and
+explain kindly what they need (this kit is macOS-only; Claude Code needs at least a Pro plan and the
+desktop app).
+
+Then greet them warmly and explain in two sentences: there's a short one-time setup (a few clicks and
+a couple of questions), then they just chat to build their app.
 
 Ask a **short** interview (one question at a time, conversational):
 1. *Wie heißt du?* (their name)
@@ -38,10 +52,6 @@ Ask a **short** interview (one question at a time, conversational):
 
 Keep their answers — you'll write them into their personal profile in Phase 3. Don't create any
 files yet.
-
-Confirm the basics gently: *"Du bist auf einem Mac und hast Claude Pro — richtig?"* If they're on
-Windows or don't have Pro, stop and explain kindly what they need (this kit is macOS-only; Claude
-Code needs at least a Pro plan).
 
 > ✅ End Phase 1: *"Super, [Name]! Ich kenne jetzt dein Ziel. Als Nächstes richte ich die paar
 > Werkzeuge ein, die dein Mac braucht — das mache ich für dich."*
@@ -69,8 +79,10 @@ node -v ; git --version ; npx wrangler --version ; brew -v
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   ```
 
-  Wait for them to confirm it finished, then continue. If Homebrew prints "Next steps" about adding
-  it to the PATH, run those lines for them or have them paste them.
+  Wait for them to confirm it finished. Homebrew almost always prints **"Next steps"** about adding
+  itself to the PATH — run those lines for them (or have them paste them), **then have them open a
+  fresh Terminal/chat** so `brew` and `node` are found. (If `node` "isn't found" right after install,
+  this is the cause.)
 - **Install Node + git** (you can run this yourself once brew exists):
 
   ```bash
@@ -123,7 +135,8 @@ overwriting. If not, create it. Fill in the interview answers. Template:
 ## How I build apps (vibe-stack)
 - My apps use the vibe-stack setup: one Cloudflare Worker (React + Mantine UI on the screen, a Hono
   API + D1 database + R2 file storage behind it). See each project's CLAUDE.md.
-- To publish a change I just say "deploy". To undo one I say "roll back".
+- Before telling me something is done, the agent checks it with `npm run validate` (and a screenshot
+  when it can). To publish a change I just say "deploy". To undo one I say "roll back".
 - Keep things simple (KISS): the fewest moving parts that work. No auth or extra services unless I
   explicitly ask and it's truly needed.
 ```
@@ -219,19 +232,28 @@ migrations to the live database automatically before publishing.)
 
 ## Phase 6 — Zum ersten Mal online
 
-Build and deploy. The starter's `deploy` script builds the app and ships it in one go.
+Build, check, and deploy in one go. `npm run deploy` first runs the full check (format, types, build,
+tests) so a broken app can never go live, then applies database migrations and publishes.
 
 ```bash
 npm run deploy
 ```
 
-When it succeeds, Wrangler prints a public URL (`https://<app-name>.<subdomain>.workers.dev`). Give
-that URL to the owner with a celebration: *"🎉 Deine App ist live! Öffne diesen Link auf deinem
-Handy oder Laptop: <URL>. Auf dem Handy kannst du im Browser-Menü 'Zum Home-Bildschirm' tippen,
-dann fühlt sie sich wie eine echte App an."*
+Two things to expect on the **very first** deploy — tell the owner so neither surprises them:
+- Wrangler may ask, in the terminal, to **register a free `workers.dev` subdomain** ("Would you like
+  to register a workers.dev subdomain now?"). The answer is **yes**.
+- The brand-new URL can be briefly unreachable (an error/"523") for up to a minute while it goes live.
+  **Wait and try again** — this is normal, not a failure.
 
-If they want to *see it locally* first instead, you can run `npm run dev` and share the local
-address — but don't leave a dev server running; the live URL is the real thing.
+**Verify it actually works before you celebrate.** When deploy succeeds Wrangler prints a public URL
+(`https://<app-name>.<subdomain>.workers.dev`). Confirm it's really up:
+- If the **chrome-devtools MCP** is connected (see Phase 7), open the URL there, take a screenshot,
+  and check the console is error-free.
+- Otherwise, ask the owner to open the URL and tell you what they see.
+
+Only once it loads, celebrate: *"🎉 Deine App ist live und läuft! Öffne diesen Link auf deinem Handy
+oder Laptop: <URL>. Auf dem Handy kannst du im Browser-Menü 'Zum Home-Bildschirm' tippen, dann fühlt
+sie sich wie eine echte App an."*
 
 > ✅ End Phase 6: *"✅ Deine App ist online und auf jedem Gerät erreichbar. Schritt 6 von 7 —
 > fast geschafft!"*
@@ -242,22 +264,39 @@ address — but don't leave a dev server running; the live URL is the real thing
 
 The owner now has a working, live app. Hand off to everyday development:
 
-1. **Switch to the project as your workspace.** For your skills to load on every future change, the
-   owner should open new chats *with the project folder as the workspace*. Explain in German how, in
-   the Code tab: open the folder `~/vibe-apps/<app-name>`. Tell them to start a **new chat** there
-   for new features — and that they can always come back; you'll remember everything via the
-   project's `CLAUDE.md`.
+1. **Switch to the project as your workspace.** For the project's skills and rules to load on every
+   future change, the owner should open new chats *with the project folder as the workspace*. Explain
+   in German how, in the Code tab: open the folder `~/vibe-apps/<app-name>`. Tell them to start a
+   **new chat there for each new feature** (a fresh chat keeps things fast and clear) — and that they
+   can always come back; you'll remember everything via the project's `CLAUDE.md`.
 2. **How to ask for things** — give them concrete examples in German:
    - *"Füge ein Feld für Eiweiß in Gramm hinzu."*
    - *"Zeig mir ein Diagramm der letzten 30 Tage."*
    - *"Mach die Knöpfe blau."*
    - *"Veröffentliche die Änderung."* (you run `npm run deploy`)
-   - *"Mach die letzte Änderung rückgängig."* (you run `wrangler rollback`)
-3. **Reassure:** they can't break anything permanently — every change is shown before it happens and
-   can be rolled back.
+   - *"Mach die letzte Veröffentlichung rückgängig."* (you run `wrangler rollback`)
+3. **How the agent works for them** — reassure, in German: *"Bei jeder Änderung prüfe ich automatisch,
+   dass alles funktioniert, bevor ich dir 'fertig' sage. Wenn etwas komisch aussieht, schick mir gern
+   einen Screenshot — dann sehe ich, was du siehst."*
+4. **Safety net — be precise.** Every change is shown as a diff and they click **Accept** or
+   **Reject** before it happens — that's the real per-change undo. `wrangler rollback` undoes the last
+   *published* version. Nothing the owner does in chat can permanently break their app or their data.
 
-> ✅ End Phase 7: *"✅ Alles steht, [Name]! Du hast eine echte, eigene App gebaut und veröffentlicht.
-> Ab jetzt sag mir einfach, was du als Nächstes möchtest."*
+**Optional power-up — "Augen für den Agenten" (chrome-devtools MCP).** This lets you open the running
+app yourself, take screenshots, and read errors — so you can verify changes visually without bugging
+the owner. It's optional; the app works fine without it. To offer it (in German):
+- The project ships a ready config at `.mcp.json.example`. Enable it by copying it to `.mcp.json`:
+  `cp .mcp.json.example .mcp.json`.
+- Tell them: *"Wenn du das nächste Mal ein neues Gespräch in diesem Ordner startest, fragt Claude
+  einmal: 'Diesen Projekt-Server erlauben?' — bitte auf **Erlauben** klicken."* Verify with `/mcp`
+  (they should see `chrome-devtools` with a ✓).
+- It runs hidden and in a throwaway browser profile (no access to their logged-in accounts), so
+  there's nothing to worry about. Prerequisite: Chrome is installed (it almost always is) and Node
+  ≥ 20.19 (installed in Phase 2).
+
+> ✅ End Phase 7: *"✅ Alles steht, [Name]! Du hast eine echte, eigene App gebaut und veröffentlicht:
+> sie kann [kurze Zusammenfassung], läuft unter <URL>, und deine Daten liegen sicher in deiner
+> Datenbank. Ab jetzt sag mir einfach, was du als Nächstes möchtest."*
 
 ---
 
@@ -270,6 +309,8 @@ when you reach them, never imply zero human steps:
 - The very first `wrangler d1 create` / `r2 bucket create` (the ids don't exist until then).
 - **Enabling R2 may require adding a payment method** to verify the account, even though usage stays
   free. This is a one-time verification, **not** a bill. Warn before, not after.
+- **The first deploy may ask to register a free `workers.dev` subdomain** (answer yes) — an
+  interactive terminal step only the owner sees.
 
 ## AUTH — the one hard stop
 
@@ -283,6 +324,20 @@ when you reach them, never imply zero human steps:
 ## If something breaks
 
 Stay calm and concrete. Read the actual error, translate the *cause* into one German sentence, and
-propose the next single step. Common ones: Homebrew not on PATH (run its "Next steps"); `wrangler
-login` not completed in the browser; R2 blocked pending account verification; a typo in the
-`database_id` pasted into `wrangler.jsonc`. Never show the owner a raw trace.
+propose the next single step. The common ones:
+
+- **No folder open in the Code tab** → you can't see files or type-to-build; guide them to
+  *Code → Local → Select folder* (Phase 1).
+- **`node`/`npm`/`brew` "not found" after install** → Homebrew's PATH "Next steps" weren't run, or the
+  shell is stale; run those lines and have them open a fresh Terminal/chat (Phase 2).
+- **`wrangler login` not completed** in the browser → re-run `npx wrangler login`, have them click
+  "Allow".
+- **Cloudflare login expired mid-session** (commands suddenly fail with an auth error) → re-run
+  `npx wrangler login`.
+- **R2 blocked / "add R2 subscription"** → account needs the one-time payment-method verification;
+  guide them, then re-run.
+- **First deploy asks for a subdomain / URL 523s** → answer yes to the subdomain prompt; wait ~1 min
+  and retry the URL — it's going live, not broken.
+- **Wrong/blank `database_id`** in `wrangler.jsonc` → re-check it against `npx wrangler d1 list`.
+
+Never show the owner a raw trace.
