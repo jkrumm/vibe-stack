@@ -178,6 +178,48 @@ app.delete('/workouts/:id', async (c) => {
 
 ---
 
+## 3b. A test for the new routes (required)
+
+**Every `/api/...` route gets a test.** Create `test/workouts.test.ts`, mirroring `test/entries.test.ts`,
+so create / list / validation behavior is covered. Tests run the real Worker against a local D1 + R2, so
+this proves the new endpoints actually work. The new table is created automatically — `test/apply-migrations.ts`
+applies every file in `migrations/`.
+
+```ts
+import { exports } from 'cloudflare:workers'
+import { expect, it } from 'vitest'
+
+const API = 'https://example.com/api'
+
+function workoutForm(fields: Record<string, string>) {
+  const form = new FormData()
+  for (const [key, value] of Object.entries(fields)) form.set(key, value)
+  return form
+}
+
+it('creates a workout and lists it back', async () => {
+  const created = await exports.default.fetch(`${API}/workouts`, {
+    method: 'POST',
+    body: workoutForm({ title: 'Beine', amount: '80' }),
+  })
+  expect(created.status).toBe(201)
+
+  const list = await exports.default.fetch(`${API}/workouts`)
+  const workouts = (await list.json()) as Array<{ title: string }>
+  expect(workouts.some((w) => w.title === 'Beine')).toBe(true)
+})
+
+it('rejects a workout without a name', async () => {
+  const res = await exports.default.fetch(`${API}/workouts`, {
+    method: 'POST',
+    body: workoutForm({ title: '' }),
+  })
+  expect(res.status).toBe(400)
+})
+```
+
+---
+
 ## 4. Client fetch helpers + query key (`src/client/lib/api.ts`)
 
 Add helpers and a query key for the new data, next to the `entries` ones. The query key is what you
@@ -443,8 +485,14 @@ default.
 
 ## Verify, then tell the owner
 
-Run the local checks via the project's tooling (build/typecheck), confirm the local database migration
-applied, and check the new list shows up at `npm run dev`. Then say (German):
+Validate before you say a word to the owner:
+
+1. `npm run fix` — format + lint.
+2. `npm run validate` — Biome + type-check + build + **tests** (including the new one). It must pass.
+3. If the chrome-devtools MCP is connected, run `npm run dev`, open the app, and screenshot the new
+   list to confirm it renders; otherwise ask the owner for a screenshot.
+
+Then say (German):
 
 > "Fertig — du hast jetzt eine zweite Liste für deine **Workouts**, direkt unter den bisherigen Einträgen.
 > Du kannst etwas hinzufügen, ein Foto anhängen und die Zahl als Verlauf sehen. Wenn alles passt, sag
@@ -456,6 +504,7 @@ live database, then publishes).
 ## The rules you must not break
 
 - Database changes are **always a new numbered migration**. Never edit an applied migration or the DB by hand.
+- **Every new route has a test** in `test/`; `npm run validate` must pass before you tell the owner anything.
 - **Validate in the Worker** with the zod schema before any SQL; always use parameterized `.bind(...)`.
 - **Files/photos go to R2**, only the key in D1. Reuse the shared `/api/photo/:key` route and `photoUrl`.
 - Mirror the `entries` patterns exactly (Mantine v9, `@mantine/form`, `@tanstack/react-query`, `@mantine/charts`).
