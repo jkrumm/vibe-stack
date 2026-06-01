@@ -12,6 +12,11 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>().basePath('/api')
 
+// Health + discovery endpoint at /api: confirms the API is up and names the app. Handy to check the
+// deployed Worker responds. If you ever open this API to other tools, grow this into a fuller
+// description of your routes (a small "agent contract").
+app.get('/', (c) => c.json({ ok: true, name: 'vibe-stack app' }))
+
 // List the most recent entries.
 app.get('/entries', async (c) => {
   const { results } = await c.env.DB.prepare(

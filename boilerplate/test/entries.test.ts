@@ -62,3 +62,10 @@ it('deletes an entry', async () => {
   const deleted = await exports.default.fetch(`${API}/entries/${entry.id}`, { method: 'DELETE' })
   expect(deleted.status).toBe(200)
 })
+
+it('answers the health/discovery endpoint', async () => {
+  const res = await exports.default.fetch(API)
+  expect(res.status).toBe(200)
+  const info = (await res.json()) as { ok: boolean }
+  expect(info.ok).toBe(true)
+})
