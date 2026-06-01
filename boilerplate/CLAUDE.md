@@ -84,7 +84,9 @@ the SPA needs no server-side fallback route.
 - **Project skills** (`.claude/skills/`): add a page, add a kind of data (table + API + UI + test),
   add a chart, add a form — plus the official **Mantine v9** skills (forms, combobox, custom
   components). **Global skills** (`~/.claude/skills/`): deploy, manage Cloudflare resources, start a
-  new app. Prefer a skill over improvising — they encode the correct, current patterns.
+  new app — and, for apps that run a real business (bookings, staff, stock): `vibe-operate` (read and
+  change the live database by talking), `vibe-ops-setup` (set up the domain + rules), `vibe-access`
+  (make the site private). Prefer a skill over improvising — they encode the correct, current patterns.
 - **More skills on demand** (only when you need deeper reference; **never `-g`** — it has a bug that
   hides the skill): copy an official skill into this project, e.g. for deep Cloudflare/Wrangler work
   `npx skills add cloudflare/skills -a claude-code --skill cloudflare wrangler --copy -y`. Treat these

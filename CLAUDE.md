@@ -11,6 +11,13 @@ A "keep-it-stupid-simple" full-stack kit for **beginners who can't really progra
 real, deployable app built entirely by talking to Claude Code. It rides Cloudflare's free tier:
 one Worker serves a React SPA *and* a Hono API, backed by D1 (database) and R2 (file storage).
 
+**Two flavors, same boilerplate.** (1) A **personal tracker** (the default) — build a little app for
+yourself. (2) An **operations tool** — run a small business by *talking*: the D1 database is the
+business's memory, the agent reads and writes the live data (via the `vibe-operate` skill +
+`wrangler d1 execute --remote`, authenticated by the owner's own Cloudflare login — no API secret),
+and the website is **private** behind Cloudflare Access. The ops flavor is layered on at setup
+(`vibe-ops-setup`), not a second boilerplate.
+
 **Audience:** the author's German-speaking, non-technical friends. Two consequences:
 - **All repo artifacts are in English** (code, docs, commits, skills, rules) — standard.
 - **The running agent speaks German to the owner.** `ONBOARDING.md` and the global `CLAUDE.md` it
@@ -34,6 +41,13 @@ one Worker serves a React SPA *and* a Hono API, backed by D1 (database) and R2 (
 6. **The agent validates, then claims done.** The boilerplate ships a real test + lint + build gate
    (`npm run validate`) and `boilerplate/CLAUDE.md` makes running it non-negotiable before the agent
    tells the owner anything works. Bulletproofing the agent's self-check is a first-class goal.
+7. **Agentic operations is a flavor, not a fork.** When an owner runs a business (reservations, staff,
+   inventory), the agent operates the live D1 conversationally via `wrangler d1 execute --remote`
+   (Code tab, owner-authenticated — no public mutation API, no secret) and the website is gated by
+   **Cloudflare Access** (managed login, works on `*.workers.dev`, no domain). Domain entities + rules
+   and a German owner guide are written into the project at setup. An authed Hono API (an "agent
+   contract" like Hermes/argo) is the documented upgrade path for managing from anywhere — not built
+   by default.
 
 ## Repository layout
 
@@ -47,7 +61,7 @@ one Worker serves a React SPA *and* a Hono API, backed by D1 (database) and R2 (
 | `boilerplate/.claude/rules/` | Path-scoped edit-time conventions (`ui.md`, `worker-data.md`, `testing.md`). |
 | `boilerplate/test/` | Workerd integration tests (`@cloudflare/vitest-pool-workers`) + setup. |
 | `boilerplate/biome.jsonc` | The single formatter/linter config. `boilerplate/.mcp.json.example` | optional chrome-devtools MCP. |
-| `skills-global/` | Cloudflare/Wrangler skills the onboarding copies into `~/.claude/skills/`. |
+| `skills-global/` | Global skills copied into `~/.claude/skills/`: `vibe-deploy`, `vibe-cloudflare`, `vibe-new-app`, plus the ops trio — `vibe-operate` (run live D1 by talking), `vibe-ops-setup` (turn an app into a business tool), `vibe-access` (private website via Cloudflare Access). |
 
 ## Verified tech facts — do NOT regress (verified 2026-06-01)
 
@@ -91,6 +105,13 @@ training knowledge. **Re-verify with `/research` before changing any of them** (
   an **optional, off-by-default** `boilerplate/.mcp.json.example` (`--isolated --headless`,
   project-scoped so Claude approval-gates it). The agent uses it to screenshot the running app and
   read the console. The core path must work without it. This is **not** "Claude for Chrome".
+- **Live-data ops + privacy (the ops flavor):** the agent manages live data with
+  `wrangler d1 execute <db> --remote --command "…" [--json]` (reads AND writes; authenticated by
+  `wrangler login`; Code tab only — Cowork/cloud can't reach it). **Cloudflare Access works on
+  `*.workers.dev`** with no custom domain: dashboard *Workers & Pages → app → Settings → Domains &
+  Routes → Enable Cloudflare Access → Manage Cloudflare Access* (allow the owner's email; default login
+  = one-time email code; the free Zero Trust tier covers a small team). Access policies are dashboard-
+  only, **not** set via `wrangler`.
 - **R2 has a gate the others don't:** enabling R2 requires completing a checkout / "add R2
   subscription" flow that in practice needs a **payment method on file**, even though usage stays
   free. D1, Workers, and Static Assets do not. The onboarding must warn the owner this is a

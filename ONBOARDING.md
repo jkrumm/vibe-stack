@@ -300,6 +300,26 @@ the owner. It's optional; the app works fine without it. To offer it (in German)
 
 ---
 
+## If this is a business tool, not a personal tracker
+
+If the owner's app is really about running a small operation — reservations, employees, orders,
+inventory (anything with *other people's* data) — switch to the **operations flavor** instead of (or
+right after) the basic entries example:
+
+1. Run the **`vibe-ops-setup`** skill — it interviews the owner about what they manage and the rules,
+   builds the data, and writes the domain operating-manual + a plain-German guide (`ANLEITUNG.md`).
+2. Because it holds other people's data, make the website **private** with the **`vibe-access`** skill
+   (Cloudflare Access on the `workers.dev` URL — no domain needed). This is the right way to satisfy
+   the AUTH hard stop: a managed login, not a hand-coded one.
+3. From then on the owner **manages by talking** and you use the **`vibe-operate`** skill to read and
+   write the live data. Managing live data needs the **Code tab** (it uses their `wrangler` login), so
+   tell them that's where day-to-day management happens.
+
+Public sign-ups for outside people (customers making their own accounts) remain a STOP — that needs a
+real developer.
+
+---
+
 ## The account boundary — be honest, don't surprise them
 
 You **cannot** do these for the owner; they happen on the owner's machine/account. Name them plainly

@@ -70,6 +70,10 @@ guided step at a time, in plain German. You just answer its questions and click 
 - **Claude already knows this stack.** The starter ships with skills and rules so Claude builds the
   *right* way every time, and it **tests and checks every change** before telling you it's done — so a
   broken version can't go live.
+- **Or run a small business by talking.** Beyond personal trackers, it can manage reservations, staff,
+  inventory and the like: you handle the live data just by chatting ("add a reservation for 4 at 7pm",
+  "who's working Friday?"), and the website stays **private behind a login**. Just describe a business
+  tool during setup and Claude wires it up.
 
 ---
 
