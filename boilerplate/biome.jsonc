@@ -1,0 +1,27 @@
+{
+  // Biome is the single tool that formats AND lints this project. One binary, one config.
+  // The agent runs `npm run fix` (auto-format + safe fixes) and `npm run validate` (the gate).
+  "$schema": "https://biomejs.dev/schemas/2.4.16/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "includes": ["**", "!dist", "!.wrangler", "!worker-configuration.d.ts"]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "assist": {
+    "actions": { "source": { "organizeImports": "on" } }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": { "recommended": true },
+    // Auto-enables React rules (rules-of-hooks, exhaustive-deps) and JSX a11y checks.
+    "domains": { "react": "recommended" }
+  },
+  "javascript": {
+    "formatter": { "quoteStyle": "single", "semicolons": "asNeeded" }
+  }
+}

@@ -2,7 +2,7 @@
 // Everything else (the React app) is served as static files by Cloudflare, without touching this code.
 
 import { Hono } from 'hono'
-import { newEntrySchema, type Entry } from '../shared/schema'
+import { type Entry, newEntrySchema } from '../shared/schema'
 
 // Bindings come from wrangler.jsonc. `wrangler types` generates the D1Database / R2Bucket types.
 type Bindings = {

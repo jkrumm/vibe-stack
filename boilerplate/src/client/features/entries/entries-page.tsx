@@ -1,16 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  ActionIcon,
-  Alert,
-  Card,
-  Group,
-  Image,
-  Loader,
-  Stack,
-  Text,
-  Title,
-} from '@mantine/core'
+import { ActionIcon, Alert, Card, Group, Image, Loader, Stack, Text, Title } from '@mantine/core'
 import { IconTrash } from '@tabler/icons-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { deleteEntry, entriesQueryKey, listEntries, photoUrl } from '../../lib/api'
 import { EntriesChart } from './entries-chart'
@@ -47,7 +37,14 @@ export function EntriesPage() {
                 <Group justify="space-between" wrap="nowrap" align="flex-start">
                   <Group wrap="nowrap" align="flex-start">
                     {e.photo_key && (
-                      <Image src={photoUrl(e.photo_key)} alt="" w={56} h={56} radius="sm" fit="cover" />
+                      <Image
+                        src={photoUrl(e.photo_key)}
+                        alt=""
+                        w={56}
+                        h={56}
+                        radius="sm"
+                        fit="cover"
+                      />
                     )}
                     <div>
                       <Text fw={600}>{e.title}</Text>

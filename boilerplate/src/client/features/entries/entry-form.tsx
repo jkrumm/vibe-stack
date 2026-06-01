@@ -1,17 +1,8 @@
-import { useState } from 'react'
+import { Button, Card, FileButton, Group, Stack, Text, Textarea, TextInput } from '@mantine/core'
 import { useForm } from '@mantine/form'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import {
-  Button,
-  Card,
-  FileButton,
-  Group,
-  Stack,
-  Text,
-  Textarea,
-  TextInput,
-} from '@mantine/core'
 import { IconCamera, IconPlus } from '@tabler/icons-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 
 import { createEntry, entriesQueryKey } from '../../lib/api'
 
@@ -53,7 +44,12 @@ export function EntryForm() {
     <Card withBorder padding="md" radius="md">
       <form onSubmit={submit}>
         <Stack gap="sm">
-          <TextInput label="Titel" placeholder="z. B. Mittagessen" withAsterisk {...form.getInputProps('title')} />
+          <TextInput
+            label="Titel"
+            placeholder="z. B. Mittagessen"
+            withAsterisk
+            {...form.getInputProps('title')}
+          />
           <TextInput
             label="Zahl (optional)"
             placeholder="z. B. Kalorien"
