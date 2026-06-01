@@ -1,0 +1,34 @@
+{
+  // The name of your app. The setup step (and ONBOARDING) renames this to match your project.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vibe-stack-app",
+  // The API entry point (the code that runs for /api/* requests).
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-05-01",
+  // Static assets = your built React app. With the Cloudflare Vite plugin, the output directory is
+  // filled in automatically, so it is intentionally omitted here.
+  "assets": {
+    // Unknown paths return index.html so the single-page app can handle its own routing.
+    "not_found_handling": "single-page-application",
+    // Only /api/* runs the Worker; everything else is served straight from static assets.
+    "run_worker_first": ["/api/*"]
+  },
+  // Free request logs in the Cloudflare dashboard — handy when something misbehaves.
+  "observability": { "enabled": true },
+  // Your database (D1). `database_id` is filled in by setup, after `wrangler d1 create`.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "vibe-stack-app-db",
+      "database_id": "REPLACE_WITH_YOUR_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // File storage (R2), for photos and uploads. Remove this block if you skip file storage for now.
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "vibe-stack-app-files"
+    }
+  ]
+}
