@@ -45,9 +45,10 @@ and the website is **private** behind Cloudflare Access. The ops flavor is layer
    inventory), the agent operates the live D1 conversationally via `wrangler d1 execute --remote`
    (Code tab, owner-authenticated — no public mutation API, no secret) and the website is gated by
    **Cloudflare Access** (managed login, works on `*.workers.dev`, no domain). Domain entities + rules
-   and a German owner guide are written into the project at setup. An authed Hono API (an "agent
-   contract" like Hermes/argo) is the documented upgrade path for managing from anywhere — not built
-   by default.
+   and a German owner guide are written into the project at setup. To manage from **anywhere** (phone,
+   Cowork) the `vibe-api-mode` skill upgrades the app to an authed Hono API — one Bearer secret in the
+   Mac keychain (agent) + entered once in the website, like Hermes/argo without Tailscale; it replaces
+   Access. Single shared secret = single-owner; use Access when staff need per-person logins.
 
 ## Repository layout
 
@@ -61,7 +62,7 @@ and the website is **private** behind Cloudflare Access. The ops flavor is layer
 | `boilerplate/.claude/rules/` | Path-scoped edit-time conventions (`ui.md`, `worker-data.md`, `testing.md`). |
 | `boilerplate/test/` | Workerd integration tests (`@cloudflare/vitest-pool-workers`) + setup. |
 | `boilerplate/biome.jsonc` | The single formatter/linter config. `boilerplate/.mcp.json.example` | optional chrome-devtools MCP. |
-| `skills-global/` | Global skills copied into `~/.claude/skills/`: `vibe-deploy`, `vibe-cloudflare`, `vibe-new-app`, plus the ops trio — `vibe-operate` (run live D1 by talking), `vibe-ops-setup` (turn an app into a business tool), `vibe-access` (private website via Cloudflare Access). |
+| `skills-global/` | Global skills copied into `~/.claude/skills/`: `vibe-deploy`, `vibe-cloudflare`, `vibe-new-app`, plus the ops set — `vibe-operate` (run live D1 by talking), `vibe-ops-setup` (turn an app into a business tool), `vibe-access` (private website via Cloudflare Access), `vibe-api-mode` (authed Bearer API + contract, to manage from anywhere). |
 
 ## Verified tech facts — do NOT regress (verified 2026-06-01)
 

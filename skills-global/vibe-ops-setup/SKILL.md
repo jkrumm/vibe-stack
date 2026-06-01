@@ -119,6 +119,11 @@ The site holds other people's data, so gate it. Run the **`vibe-access`** skill 
 Access (manager-only login) on the `workers.dev` URL — no custom domain needed. Do this before or right
 after the first deploy.
 
+If instead the owner wants to **manage from anywhere** (their phone, Cowork) and is the only user, the
+**`vibe-api-mode`** skill is the alternative gate: one secret protects the data and the website asks for
+it once. Rule of thumb — **Access** when several staff need their own logins; **API mode** for a single
+owner who wants access everywhere. Don't run both.
+
 ## Step 6 — Write the owner's guide, then deploy
 
 Write a plain-German **`ANLEITUNG.md`** into the project (see the template below) so the owner knows how
