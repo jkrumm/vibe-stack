@@ -1,0 +1,15 @@
+{
+  "_comment": "Tracks what the owner has pasted where, so the vibe-connector / vibe-ops-setup sync ritual can detect when an artifact changed and offer a 30-second re-paste. `hash` is the sha256 of the artifact's current content (the skill fills it in after generating). Empty hash = never pasted yet.",
+  "version": 1,
+  "connectorUrl": "REPLACE_WITH_https://<app>.<subdomain>.workers.dev/mcp",
+  "artifacts": {
+    "PROJEKT-ANWEISUNGEN.md": {
+      "pasteTo": "Claude Project instructions (claude.ai → Projects → <app> → Anweisungen)",
+      "hash": ""
+    },
+    "ANWEISUNGEN-GLOBAL.md": {
+      "pasteTo": "Claude global personal preferences (claude.ai → Settings → Profile)",
+      "hash": ""
+    }
+  }
+}

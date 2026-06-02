@@ -63,7 +63,8 @@ and the website is **private** behind Cloudflare Access. The ops flavor is layer
 | `boilerplate/.claude/rules/` | Path-scoped edit-time conventions (`ui.md`, `worker-data.md`, `testing.md`). |
 | `boilerplate/test/` | Workerd integration tests (`@cloudflare/vitest-pool-workers`) + setup. |
 | `boilerplate/biome.jsonc` | The single formatter/linter config. `boilerplate/.mcp.json.example` | optional chrome-devtools MCP. |
-| `skills-global/` | Global skills copied into `~/.claude/skills/`: `vibe-deploy`, `vibe-cloudflare`, `vibe-new-app`, plus the ops set — `vibe-operate` (run live D1 by talking), `vibe-ops-setup` (turn an app into a business tool), `vibe-access` (private website via Cloudflare Access), `vibe-api-mode` (authed Bearer API + contract, to manage from anywhere). |
+| `skills-global/` | Global skills copied into `~/.claude/skills/`: `vibe-deploy`, `vibe-cloudflare`, `vibe-new-app`, `vibe-connector` (connect the app to Claude as a custom connector — provision `OAUTH_KV` + `OWNER_SECRET`, deploy, register, generate `claude-setup/`), plus the ops set — `vibe-operate` (run live D1 by talking), `vibe-ops-setup` (turn an app into a business tool), `vibe-access` (per-person staff logins via Cloudflare Access). The old `vibe-api-mode` is folded into the base boilerplate. |
+| `boilerplate/claude-setup/` | Git-tracked paste bundle (German) for the consumer surfaces that have no API — `PROJEKT-ANWEISUNGEN.md`, `ANWEISUNGEN-GLOBAL.md`, `EINFUEGEN.md`, `manifest.json`. `vibe-connector` fills it from the real project and drives the copy-paste ritual. Only Chat/Cowork need it. |
 
 ## Verified tech facts — do NOT regress (verified 2026-06-02)
 

@@ -21,14 +21,15 @@ Explain the model in two sentences, then the privacy reality up front:
 > *"Wir bauen dir ein Werkzeug, mit dem du deinen Betrieb per Sprache verwaltest: Ich merke mir alles in
 > deiner Datenbank, du sagst mir einfach, was du brauchst. Eine Webseite zeigt dir alles übersichtlich."*
 
-> *"Wichtig: Hier stehen Daten von anderen Menschen drin (z. B. Mitarbeiter, Gäste). Deshalb wird deine
-> Webseite **privat** — nur du (und wen du erlaubst) kann sie öffnen. Das richten wir mit einem
-> Login-Schutz ein (Schritt 5). Ich programmiere keinen eigenen Login — das übernimmt Cloudflare sicher
-> für uns."*
+> *"Wichtig: Hier stehen Daten von anderen Menschen drin (z. B. Mitarbeiter, Gäste). Deine App ist
+> deshalb von Anfang an **privat** — sie öffnet sich nur mit deinem **Zugangsschlüssel**. Du verwaltest
+> alles selbst: von überall (Handy, Chat) oder hier am Mac. Ich programmiere keinen eigenen Login."*
 
-This is the **AUTH boundary done right**: the app holds other people's data, so it must be private —
-but we use **Cloudflare Access** (a managed login), never a hand-coded one. If the owner instead wanted
-*the public* (e.g. guests) to log in and create their own accounts, STOP — that needs a real developer.
+This is the **AUTH boundary done right**: the app holds other people's data, so it stays private — the
+single-owner **access-key login is built in** (one owner). If several **staff** need their *own* logins
+to the website, layer **Cloudflare Access** (`vibe-access`, Step 5). Never hand-code a login. If the
+owner instead wanted *the public* (e.g. guests) to sign up with their own accounts, STOP — that needs a
+real developer.
 
 ## Step 1 — Interview the domain (one entity at a time)
 
@@ -64,9 +65,10 @@ apply when you create records too. Template (fill in from the interview):
 ```markdown
 ## Your business (domain) — how to run this app's data
 
-This app is an **operations tool**. The owner manages the live data by talking; you read and write it
-with the **vibe-operate** skill (`wrangler d1 execute <db-name> --remote`). Read before you write,
-confirm before you write, and enforce the rules below every time.
+This app is an **operations tool**. The owner manages the live data by talking — from anywhere via the
+**connector** (the app's MCP tools / REST API), and from the Code tab you can also use raw SQL with the
+**vibe-operate** skill (`wrangler d1 execute <db-name> --remote`). Read before you write, confirm before
+you write, and enforce the rules below every time, whichever path you use.
 
 ### What we manage
 - **reservations** (Reservierungen): guest, party_size, date, time, table_no, status, note, created_at.
@@ -113,16 +115,22 @@ Report back in one plain-German sentence. Never show SQL.
 
 Make an equivalent `manage-staff` (or whatever the owner's second entity is). Keep the count small.
 
-## Step 5 — Make the website private (`vibe-access`)
+## Step 5 — Connect it so the owner manages from anywhere (`vibe-connector`)
 
-The site holds other people's data, so gate it. Run the **`vibe-access`** skill to switch on Cloudflare
-Access (manager-only login) on the `workers.dev` URL — no custom domain needed. Do this before or right
-after the first deploy.
+The app is already single-owner **private** (the built-in access-key login) and ships an MCP server +
+REST API. Run the **`vibe-connector`** skill so the owner can run the business from **anywhere** —
+phone, desktop/web Chat, a Project — not only the Code tab: it provisions the access key + token store,
+deploys, and walks the owner through adding the app as a custom connector (in German). Make sure each
+entity from Step 2 is exposed as **MCP tools** (the `add-data` skill does this), so the owner can say
+*"trag eine Reservierung für 4 um 19 Uhr ein"* from their phone and it just works.
 
-If instead the owner wants to **manage from anywhere** (their phone, Cowork) and is the only user, the
-**`vibe-api-mode`** skill is the alternative gate: one secret protects the data and the website asks for
-it once. Rule of thumb — **Access** when several staff need their own logins; **API mode** for a single
-owner who wants access everywhere. Don't run both.
+For raw, ad-hoc SQL (bulk fixes, one-off reports) you still use the **`vibe-operate`** skill
+(`wrangler d1 execute --remote`) from the **Code tab** — the Mac-only power tool.
+
+**Staff logins:** the built-in key is one shared secret = the single owner. If several **staff** each
+need their *own* login to the website, layer **Cloudflare Access** with the **`vibe-access`** skill
+(works on the `workers.dev` URL, no domain) — use Access *instead of* sharing the one key, don't run
+both as the gate. Public sign-ups for outside guests remain a STOP (needs a real developer).
 
 ## Step 6 — Write the owner's guide, then deploy
 
@@ -155,17 +163,22 @@ Claude baut es, prüft es und stellt es online, wenn du „veröffentliche“ sa
 
 ## 3. Alles ansehen (Webseite)
 Öffne die Web-Adresse deiner App (Claude nennt sie dir) auf Handy oder Laptop. Sie ist **privat** —
-beim Öffnen fragt Cloudflare nach deiner E-Mail und schickt dir einen Code zum Einloggen.
+beim ersten Öffnen gibst du deinen **Zugangsschlüssel** ein, danach bleibt sie auf diesem Gerät offen.
 
-## Code-Ansicht vs. Cowork
-Zum **Verwalten der echten Daten** nutze die **Code-Ansicht auf deinem Mac** (dort hat Claude den
-Zugang zu deiner Datenbank). Cowork (in der Cloud) eignet sich noch nicht zum Verwalten.
+## 4. Von überall verwalten (Handy, Chat)
+Deine App ist als **Connector** mit Claude verbunden. Du kannst also auch unterwegs einfach Claude im
+Chat oder in deinem Projekt fragen — z. B. „Wer arbeitet morgen?“ — und es klappt ohne deinen Mac.
+
+## Code-Ansicht für größere Umbauten
+Neue Felder, neue Listen oder ein neues Aussehen baust du in der **Code-Ansicht auf deinem Mac**. Das
+normale Verwalten (eintragen, ändern, ansehen) geht von überall.
 ```
 
 ## Independence & hard rules
 - This is still **one app, one D1, one Worker** — no second deploy target. New entities are new tables
   in the same database (the business's growing memory).
-- Schema changes are always a new migration; managing data is `vibe-operate` (live SQL), never a hand-
-  edited migration.
-- The website is **private via Cloudflare Access** — never hand-code a login. Public sign-ups for
-  outside people = STOP (needs a real developer).
+- Schema changes are always a new migration; managing data is the connector tools / REST API (from
+  anywhere) or `vibe-operate` live SQL (Code tab), never a hand-edited migration.
+- The website is **private by default** (the single-owner access key); for per-person staff logins layer
+  **Cloudflare Access** (`vibe-access`) — never hand-code a login. Public sign-ups for outside people =
+  STOP (needs a real developer).
