@@ -48,6 +48,10 @@
       "id": "REPLACE_WITH_YOUR_KV_ID"
     }
   ]
+  // AI models (summarise / translate / parse free text) are optional and OFF by default. The
+  // `vibe-ai` skill adds the `{ "ai": { "binding": "AI" } }` binding here and wires an example route;
+  // the helper module (src/worker/ai.ts) is already shipped. No API key, no extra account.
+  //
   // OWNER_SECRET (the owner's access key) is a Worker SECRET, not listed here. Set it once with
   // `wrangler secret put OWNER_SECRET`. The website, the REST API and the OAuth consent page all
   // check this one value; a request that presents it is treated as the owner.

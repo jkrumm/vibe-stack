@@ -57,3 +57,24 @@ Behavior lives in **one** place; the REST API and the MCP server are thin adapte
 - Store uploads in `c.env.BUCKET` and keep only the **key** (e.g. `photo_key`) in D1. Stream files
   back through an `/api/photo/...`-style route. Delete the R2 object when its row is deleted (see the
   `DELETE` route).
+
+## AI-backed tasks (optional — only after the `vibe-ai` skill is on)
+
+If the app uses AI (a route that summarises / translates / parses free text), it runs on **Cloudflare
+Workers AI** via the shipped helper `src/worker/ai.ts` — turned on by the **`vibe-ai`** skill (which
+adds the `{ "ai": { "binding": "AI" } }` binding and `AI: Ai` to `Bindings`). Conventions:
+
+- **Never call `c.env.AI.run(...)` directly in a route.** Use `parseToSchema(c.env.AI, { text, schema,
+  instruction })` or `translate(c.env.AI, { text, target })` from `ai.ts`. They run JSON Mode and
+  **re-validate** the model's output, so the route stays thin.
+- **Reuse a Zod schema as the parse target** (define it once in `src/shared/schema.ts`, like
+  `newEntrySchema`). The model's answer is validated against it — a wrong answer becomes a clean
+  `unparseable`, never bad data. Never write an AI result to D1 without that validation.
+- **Always handle `{ ok: false }`** — map `'unavailable'` (free daily limit / model down) and
+  `'unparseable'` to a plain-German message (503 and 422). An AI failure must never block the owner;
+  leave the manual path working.
+- **Keep the model id in `ai.ts`** (one place). It's on the JSON-Mode list
+  (`@cf/meta/llama-3.3-70b-instruct-fp8-fast`); `/research` Workers AI before swapping it.
+- **The route still needs tests** — assert the auth gate (401) and input validation (400), the paths
+  that return **before** the model call (the live call only works on a real deploy). The `ai.ts` logic
+  is covered offline by `test/ai.test.ts` with a stubbed binding.
