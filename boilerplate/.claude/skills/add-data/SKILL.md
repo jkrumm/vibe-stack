@@ -1,14 +1,19 @@
 ---
 name: add-data
-description: Add a NEW kind of data end-to-end (new table + API + screen). Use when the owner wants to store/save/track a new kind of thing — "ich will auch X speichern", a new table, a new list, a new record type (e.g. workouts, books, expenses) that is separate from the existing entries.
+description: Add a NEW kind of data end-to-end (new table + data layer + REST route + MCP tool + screen + tests). Use when the owner wants to store/save/track a new kind of thing — "ich will auch X speichern", a new table, a new list, a new record type (e.g. workouts, books, expenses) that is separate from the existing entries.
 ---
 
 # add-data — add a new kind of data, end to end
 
 Use this when the owner wants to store a **new kind of thing** that doesn't fit the existing `entries`
 example — e.g. "ich will auch meine Workouts speichern", "ich will Bücher festhalten", "kannst du auch
-meine Ausgaben tracken". You build the full vertical slice: database table → shared schema → API routes
-→ client fetch helpers → a feature page with a form, mirroring the `entries` feature exactly.
+meine Ausgaben tracken". You build the full vertical slice, **mirroring the `entries` feature exactly**:
+migration → shared Zod schema → a pure **data.ts** function → a **REST route** (documented) → an **MCP
+tool** → client helpers → a feature page → **tests** (REST + tool).
+
+The architecture rule (see `.claude/rules/worker-data.md`): **define each operation once in `data.ts`,
+then expose it as both a REST route and an MCP tool, reusing the same Zod schema.** That way the owner
+gets the new data on the website *and* through the connector (phone / Chat) automatically.
 
 If they just want to rename/repurpose the *single* existing thing, that is not this skill — adapt
 `entries` instead. Use this when they need a **second, separate** list alongside what already exists.
@@ -31,16 +36,15 @@ names, contact info, anything personal), STOP. Say (German):
 > Datenschutz — das geht über das hinaus, was wir hier sicher selbst bauen können. Dafür solltest du eine
 > Entwicklerin oder einen Entwickler dazu holen."
 
-Throughout this skill, replace `workouts` / `workout` with the owner's real word (kebab-case for files
-and the table, e.g. `workouts`, `books`, `expenses`). Keep names lowercase and plural for the table.
+Throughout this skill, replace `workouts` / `workout` / `Workout` with the owner's real word (kebab-case
+for files and the table, e.g. `workouts`, `books`, `expenses`). Keep the table name lowercase and plural.
 
 ---
 
 ## 1. New migration (NEVER edit an applied one)
 
-Migrations are **append-only**. Look at `migrations/` and create the **next** number — if the highest is
-`0001_init.sql`, the new file is `0002_<name>.sql`. Never edit `0001_init.sql` or any file already applied;
-never change the database by hand.
+Migrations are **append-only**. Create the **next** number — if the highest is `0001_init.sql`, the new
+file is `0002_<name>.sql`. Never edit an applied migration; never change the database by hand.
 
 `migrations/0002_workouts.sql`:
 
@@ -60,21 +64,19 @@ CREATE TABLE IF NOT EXISTS workouts (
 CREATE INDEX IF NOT EXISTS idx_workouts_created_at ON workouts (created_at);
 ```
 
-Apply it to the **local** database:
+Apply it to the **local** database (the live one is updated by `npm run deploy`):
 
 ```bash
 npm run db:apply:local
 ```
 
-The live database is updated automatically by `npm run deploy` (it runs the remote migration before
-deploying) — you do not apply remote migrations by hand here.
-
 ---
 
 ## 2. Shared schema + type (`src/shared/schema.ts`)
 
-Add a new zod schema and type alongside the existing `newEntrySchema` / `Entry`. The German validation
-messages matter — they are what the owner sees.
+Add a Zod schema for input and one for the row, mirroring `newEntrySchema` / `entrySchema`. Derive the
+type from the row schema (single source of the shape). German validation messages matter — they're what
+the owner sees. Reuse the existing `idParamSchema` for the delete route; don't add a new one.
 
 ```ts
 // New: workouts.
@@ -83,113 +85,228 @@ export const newWorkoutSchema = z.object({
   amount: z.number().finite().nonnegative('Die Zahl darf nicht negativ sein.').nullable(),
   note: z.string().trim().max(2000).nullable(),
 })
-
 export type NewWorkout = z.infer<typeof newWorkoutSchema>
 
-export interface Workout {
-  id: number
-  title: string
-  amount: number | null
-  note: string | null
-  photo_key: string | null
-  created_at: string // ISO 8601
-}
+export const workoutSchema = z.object({
+  id: z.number().int(),
+  title: z.string(),
+  amount: z.number().nullable(),
+  note: z.string().nullable(),
+  photo_key: z.string().nullable(),
+  created_at: z.string(),
+})
+export type Workout = z.infer<typeof workoutSchema>
 ```
 
 ---
 
-## 3. API routes (`src/worker/index.ts`)
+## 3. The data layer (`src/worker/data.ts`) — the single source of behavior
 
-Add list / create / delete routes for the new table, copying the `entries` handlers. Validate in the
-Worker with the new schema, and use parameterized `.bind(...)` — never string-concatenate SQL. The photo
-goes to R2 (`c.env.BUCKET`); only the key is stored in D1. The existing `/api/photo/:key` route already
-serves photos for any table, so you do **not** add a new photo route.
-
-Update the import, then add the routes (place them next to the `entries` routes, before `export default app`):
+Add pure functions for the new table, mirroring `listEntries` / `createEntry` / `deleteEntry`. No Hono,
+no HTTP — just D1 + R2. The REST route AND the MCP tool will both call these.
 
 ```ts
-import { newEntrySchema, newWorkoutSchema, type Entry, type Workout } from '../shared/schema'
-```
+const WORKOUT_COLUMNS = 'id, title, amount, note, photo_key, created_at'
 
-```ts
-// List the most recent workouts.
-app.get('/workouts', async (c) => {
-  const { results } = await c.env.DB.prepare(
-    'SELECT id, title, amount, note, photo_key, created_at FROM workouts ORDER BY created_at DESC LIMIT 200',
-  ).all<Workout>()
-  return c.json(results)
-})
+export async function listWorkouts(db: D1Database, limit = 200): Promise<Workout[]> {
+  const { results } = await db
+    .prepare(`SELECT ${WORKOUT_COLUMNS} FROM workouts ORDER BY created_at DESC LIMIT ?`)
+    .bind(limit)
+    .all<Workout>()
+  return results
+}
 
-// Create a workout (multipart form so it can carry an optional photo).
-app.post('/workouts', async (c) => {
-  const form = await c.req.parseBody()
-
-  const parsed = newWorkoutSchema.safeParse({
-    title: typeof form.title === 'string' ? form.title : '',
-    amount: form.amount === undefined || form.amount === '' ? null : Number(form.amount),
-    note: typeof form.note === 'string' && form.note !== '' ? form.note : null,
-  })
-  if (!parsed.success) {
-    return c.json({ error: parsed.error.issues[0]?.message ?? 'Ungültige Eingabe.' }, 400)
-  }
-  const { title, amount, note } = parsed.data
-
+export async function createWorkout(
+  db: D1Database,
+  bucket: R2Bucket,
+  input: NewWorkout,
+  photo?: File | null,
+): Promise<Workout> {
   let photoKey: string | null = null
-  const photo = form.photo
   if (photo instanceof File && photo.size > 0) {
     photoKey = `photos/${crypto.randomUUID()}`
-    await c.env.BUCKET.put(photoKey, photo, {
+    await bucket.put(photoKey, photo, {
       httpMetadata: { contentType: photo.type || 'application/octet-stream' },
     })
   }
-
   const createdAt = new Date().toISOString()
-  const inserted = await c.env.DB.prepare(
-    'INSERT INTO workouts (title, amount, note, photo_key, created_at) VALUES (?, ?, ?, ?, ?)',
-  )
-    .bind(title, amount, note, photoKey, createdAt)
+  const inserted = await db
+    .prepare('INSERT INTO workouts (title, amount, note, photo_key, created_at) VALUES (?, ?, ?, ?, ?)')
+    .bind(input.title, input.amount, input.note, photoKey, createdAt)
     .run()
-
-  const workout: Workout = {
+  return {
     id: Number(inserted.meta.last_row_id),
-    title,
-    amount,
-    note,
+    title: input.title,
+    amount: input.amount,
+    note: input.note,
     photo_key: photoKey,
     created_at: createdAt,
   }
-  return c.json(workout, 201)
-})
+}
 
-// Delete a workout (and its photo, if any).
-app.delete('/workouts/:id', async (c) => {
-  const id = Number(c.req.param('id'))
-  if (!Number.isInteger(id)) return c.json({ error: 'Ungültige ID.' }, 400)
-
-  const row = await c.env.DB.prepare('SELECT photo_key FROM workouts WHERE id = ?')
+export async function deleteWorkout(db: D1Database, bucket: R2Bucket, id: number): Promise<boolean> {
+  const row = await db
+    .prepare('SELECT photo_key FROM workouts WHERE id = ?')
     .bind(id)
     .first<{ photo_key: string | null }>()
-  if (row?.photo_key) await c.env.BUCKET.delete(row.photo_key)
-
-  await c.env.DB.prepare('DELETE FROM workouts WHERE id = ?').bind(id).run()
-  return c.json({ ok: true })
-})
+  if (!row) return false
+  if (row.photo_key) await bucket.delete(row.photo_key)
+  await db.prepare('DELETE FROM workouts WHERE id = ?').bind(id).run()
+  return true
+}
 ```
+
+`getPhoto` is shared — reuse it for any table; don't add another.
 
 ---
 
-## 3b. A test for the new routes (required)
+## 4. REST routes (`src/worker/api.ts`) — documented, calling `data.ts`
 
-**Every `/api/...` route gets a test.** Create `test/workouts.test.ts`, mirroring `test/entries.test.ts`,
-so create / list / validation behavior is covered. Tests run the real Worker against a local D1 + R2, so
-this proves the new endpoints actually work. The new table is created automatically — `test/apply-migrations.ts`
-applies every file in `migrations/`.
+Add the routes next to the `entries` routes (they're automatically Bearer-protected — they're below the
+guard). Each wraps `describeRoute` so it lands in `/api/openapi.json`, and just parses input + calls a
+`data.ts` function. Add the schemas to the existing import from `../shared/schema`.
+
+```ts
+// List the most recent workouts.
+api.get(
+  '/workouts',
+  describeRoute({
+    description: 'List the most recent workouts, newest first.',
+    responses: {
+      200: {
+        description: 'The workouts.',
+        content: { 'application/json': { schema: resolver(z.array(workoutSchema)) } },
+      },
+    },
+  }),
+  async (c) => c.json(await data.listWorkouts(c.env.DB)),
+)
+
+// Create a workout (multipart form so it can carry an optional photo).
+api.post(
+  '/workouts',
+  describeRoute({
+    description: 'Create a workout. multipart/form-data: title, optional amount, optional note, optional photo.',
+    responses: {
+      201: {
+        description: 'The created workout.',
+        content: { 'application/json': { schema: resolver(workoutSchema) } },
+      },
+      400: { description: 'Invalid input.' },
+    },
+  }),
+  async (c) => {
+    const form = await c.req.parseBody()
+    const parsed = newWorkoutSchema.safeParse({
+      title: typeof form.title === 'string' ? form.title : '',
+      amount: form.amount === undefined || form.amount === '' ? null : Number(form.amount),
+      note: typeof form.note === 'string' && form.note !== '' ? form.note : null,
+    })
+    if (!parsed.success) {
+      return c.json({ error: parsed.error.issues[0]?.message ?? 'Ungültige Eingabe.' }, 400)
+    }
+    const photo = form.photo instanceof File ? form.photo : null
+    const workout = await data.createWorkout(c.env.DB, c.env.BUCKET, parsed.data, photo)
+    return c.json(workout, 201)
+  },
+)
+
+// Delete a workout (and its photo, if any).
+api.delete(
+  '/workouts/:id',
+  validator('param', idParamSchema, (result, c) => {
+    if (!result.success) return c.json({ error: 'Ungültige ID.' }, 400)
+  }),
+  describeRoute({
+    description: 'Delete a workout by id (and its photo, if any).',
+    responses: { 200: { description: 'Deleted.' }, 400: { description: 'Invalid id.' } },
+  }),
+  async (c) => {
+    const { id } = c.req.valid('param')
+    await data.deleteWorkout(c.env.DB, c.env.BUCKET, id)
+    return c.json({ ok: true })
+  },
+)
+```
+
+The existing `/api/photo/:key` route already serves photos for any table — do **not** add another.
+
+---
+
+## 5. MCP tools (`src/worker/mcp.ts`) — same data, for the connector
+
+So the owner can manage workouts from their phone/Chat too, add one tool per operation inside
+`buildMcpServer`, reusing the **same Zod schema** and the **same `data.ts` functions**. Keep each
+`description` under 500 characters. Photos stay website-only — no photo tool.
+
+```ts
+server.registerTool(
+  'list_workouts',
+  {
+    title: 'List workouts',
+    description: 'List the most recent workouts (newest first) as JSON: id, title, amount, note, created_at.',
+    inputSchema: {},
+  },
+  async () => {
+    const workouts = await data.listWorkouts(env.DB)
+    return { content: [{ type: 'text', text: JSON.stringify(workouts) }] }
+  },
+)
+
+server.registerTool(
+  'create_workout',
+  {
+    title: 'Create workout',
+    description:
+      'Create a workout. Required: title. Optional: amount (a number) and note. Photos are added on the website. Returns the created workout as JSON.',
+    inputSchema: {
+      title: newWorkoutSchema.shape.title,
+      amount: newWorkoutSchema.shape.amount.optional(),
+      note: newWorkoutSchema.shape.note.optional(),
+    },
+  },
+  async ({ title, amount, note }) => {
+    const workout = await data.createWorkout(env.DB, env.BUCKET, {
+      title,
+      amount: amount ?? null,
+      note: note ?? null,
+    })
+    return { content: [{ type: 'text', text: JSON.stringify(workout) }] }
+  },
+)
+
+server.registerTool(
+  'delete_workout',
+  {
+    title: 'Delete workout',
+    description: 'Delete a workout by its id. Tell the owner what was removed before calling this.',
+    inputSchema: { id: z.number().int().positive() },
+  },
+  async ({ id }) => {
+    const existed = await data.deleteWorkout(env.DB, env.BUCKET, id)
+    const text = existed ? `Workout ${id} gelöscht.` : `Kein Workout mit der id ${id} gefunden.`
+    return { content: [{ type: 'text', text }] }
+  },
+)
+```
+
+If the owner uses the connector, **regenerate `claude-setup/PROJEKT-ANWEISUNGEN.md`** with the new tool
+names and offer the 30-second re-paste (see the `vibe-connector` skill). New tools change behavior.
+
+---
+
+## 6. Tests (required) — the REST routes AND the MCP tools
+
+**Every route and every tool gets a test.** Tests run the real Worker against a local D1 + R2.
+
+`test/workouts.test.ts` (REST — mirror `test/entries.test.ts`, which sends the Bearer test key):
 
 ```ts
 import { exports } from 'cloudflare:workers'
 import { expect, it } from 'vitest'
 
 const API = 'https://example.com/api'
+const AUTH = { Authorization: 'Bearer test-secret' }
 
 function workoutForm(fields: Record<string, string>) {
   const form = new FormData()
@@ -200,11 +317,12 @@ function workoutForm(fields: Record<string, string>) {
 it('creates a workout and lists it back', async () => {
   const created = await exports.default.fetch(`${API}/workouts`, {
     method: 'POST',
+    headers: AUTH,
     body: workoutForm({ title: 'Beine', amount: '80' }),
   })
   expect(created.status).toBe(201)
 
-  const list = await exports.default.fetch(`${API}/workouts`)
+  const list = await exports.default.fetch(`${API}/workouts`, { headers: AUTH })
   const workouts = (await list.json()) as Array<{ title: string }>
   expect(workouts.some((w) => w.title === 'Beine')).toBe(true)
 })
@@ -212,38 +330,54 @@ it('creates a workout and lists it back', async () => {
 it('rejects a workout without a name', async () => {
   const res = await exports.default.fetch(`${API}/workouts`, {
     method: 'POST',
+    headers: AUTH,
     body: workoutForm({ title: '' }),
   })
   expect(res.status).toBe(400)
 })
 ```
 
----
-
-## 4. Client fetch helpers + query key (`src/client/lib/api.ts`)
-
-Add helpers and a query key for the new data, next to the `entries` ones. The query key is what you
-invalidate after create/delete so the list refreshes.
-
-Update the import, then add:
+For the MCP tool, extend `test/mcp.test.ts` (or add a sibling) using the in-memory transport pattern —
+prove the tool actually persists through `data.ts`:
 
 ```ts
-import type { Entry, Workout } from '../../shared/schema'
+it('creates a workout through the MCP tool', async () => {
+  const server = buildMcpServer(env)
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+  const client = new Client({ name: 'test', version: '1.0.0' })
+  await server.connect(serverTransport)
+  await client.connect(clientTransport)
+
+  const res = await client.callTool({ name: 'create_workout', arguments: { title: 'Rücken', amount: 60 } })
+  expect(res.isError).toBeFalsy()
+  const workouts = await listWorkouts(env.DB)
+  expect(workouts.some((w) => w.title === 'Rücken')).toBe(true)
+
+  await client.close()
+  await server.close()
+})
 ```
+
+---
+
+## 7. Client fetch helpers + query key (`src/client/lib/api.ts`)
+
+Add helpers next to the `entries` ones, routed through the existing **`apiFetch`** (it sends the access
+key and handles the login) — never plain `fetch`. Add the type to the existing import.
 
 ```ts
 export const workoutsQueryKey = ['workouts'] as const
 
 export function listWorkouts(): Promise<Workout[]> {
-  return fetch('/api/workouts').then((r) => jsonOrThrow<Workout[]>(r))
+  return apiFetch('/api/workouts').then((r) => jsonOrThrow<Workout[]>(r))
 }
 
 export function createWorkout(input: FormData): Promise<Workout> {
-  return fetch('/api/workouts', { method: 'POST', body: input }).then((r) => jsonOrThrow<Workout>(r))
+  return apiFetch('/api/workouts', { method: 'POST', body: input }).then((r) => jsonOrThrow<Workout>(r))
 }
 
 export function deleteWorkout(id: number): Promise<{ ok: true }> {
-  return fetch(`/api/workouts/${id}`, { method: 'DELETE' }).then((r) => jsonOrThrow<{ ok: true }>(r))
+  return apiFetch(`/api/workouts/${id}`, { method: 'DELETE' }).then((r) => jsonOrThrow<{ ok: true }>(r))
 }
 ```
 
@@ -251,7 +385,7 @@ export function deleteWorkout(id: number): Promise<{ ok: true }> {
 
 ---
 
-## 5. Feature folder (`src/client/features/workouts/`)
+## 8. Feature folder (`src/client/features/workouts/`)
 
 Create three files mirroring `features/entries/`. Adjust the German labels to the owner's wording.
 
@@ -458,7 +592,7 @@ export function WorkoutsPage() {
 
 ---
 
-## 6. Wire it into the screen (`src/client/App.tsx`)
+## 9. Wire it into the screen (`src/client/App.tsx`)
 
 Show both lists. The simplest KISS approach: stack the new page under the existing one inside the same
 `Container`. Import it and render it in `AppShell.Main`.
@@ -477,9 +611,8 @@ import { WorkoutsPage } from './features/workouts/workouts-page'
 </AppShell.Main>
 ```
 
-If the owner wants the two lists as separate **tabs** instead of stacked, use Mantine's `Tabs`
-(`<Tabs defaultValue="...">` with `Tabs.List` / `Tabs.Panel`) — but only if they ask; stacking is the
-default.
+If the owner wants the two lists as separate **tabs** instead of stacked, use Mantine's `Tabs` — but
+only if they ask; stacking is the default.
 
 ---
 
@@ -488,24 +621,27 @@ default.
 Validate before you say a word to the owner:
 
 1. `npm run fix` — format + lint.
-2. `npm run validate` — Biome + type-check + build + **tests** (including the new one). It must pass.
+2. `npm run validate` — Biome + type-check + build + **tests** (including the new ones). It must pass.
 3. If the chrome-devtools MCP is connected, run `npm run dev`, open the app, and screenshot the new
    list to confirm it renders; otherwise ask the owner for a screenshot.
 
 Then say (German):
 
 > "Fertig — du hast jetzt eine zweite Liste für deine **Workouts**, direkt unter den bisherigen Einträgen.
-> Du kannst etwas hinzufügen, ein Foto anhängen und die Zahl als Verlauf sehen. Wenn alles passt, sag
-> einfach **„veröffentliche"** — dann stelle ich es live."
+> Du kannst etwas hinzufügen, ein Foto anhängen und die Zahl als Verlauf sehen — auf der Webseite und (wenn
+> verbunden) auch per Connector vom Handy. Wenn alles passt, sag einfach **„veröffentliche"**."
 
 When they say *"veröffentliche"* / *"deploy"*, run `npm run deploy` (it applies the new migration to the
 live database, then publishes).
 
 ## The rules you must not break
 
+- **Define the operation once in `data.ts`**, then expose it as a REST route (with `describeRoute`) AND
+  an MCP tool reusing the same Zod schema. Tool descriptions stay **under 500 characters**.
 - Database changes are **always a new numbered migration**. Never edit an applied migration or the DB by hand.
-- **Every new route has a test** in `test/`; `npm run validate` must pass before you tell the owner anything.
+- **Every new route AND every new tool has a test** in `test/`; `npm run validate` must pass first.
 - **Validate in the Worker** with the zod schema before any SQL; always use parameterized `.bind(...)`.
-- **Files/photos go to R2**, only the key in D1. Reuse the shared `/api/photo/:key` route and `photoUrl`.
+- **Files/photos go to R2**, only the key in D1. Reuse the shared `/api/photo/:key` route + `photoUrl`;
+  photos are never an MCP tool.
 - Mirror the `entries` patterns exactly (Mantine v9, `@mantine/form`, `@tanstack/react-query`, `@mantine/charts`).
 - All owner-facing text is calm, plain German; never show a raw error or stack trace.

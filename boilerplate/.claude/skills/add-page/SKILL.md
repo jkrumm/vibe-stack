@@ -236,9 +236,11 @@ Wrap the app in a `BrowserRouter` in `main.tsx` (around `<App />`, inside the ex
 then use `Routes`/`Route` in `App.tsx` and `<Link>`/`NavLink` for navigation. Each route renders a
 feature component.
 
-Cloudflare routing note: with `assets.run_worker_first: ["/api/*"]` in `wrangler.jsonc`, the Worker
-only runs for `/api/*` and Cloudflare serves the SPA for everything else — so a hard refresh on a
-client route like `/auswertung` already returns `index.html`. No extra fallback config is needed.
-Keep all API paths under `/api/*` so they never collide with client routes.
+Cloudflare routing note: `assets.run_worker_first` in `wrangler.jsonc` lists the paths the Worker
+handles — `/api/*`, `/mcp`, and the OAuth endpoints (`/authorize`, `/token`, `/register`,
+`/.well-known/oauth-authorization-server`); Cloudflare serves the SPA for everything else. So a hard
+refresh on a client route like `/auswertung` already returns `index.html` — no extra fallback config
+needed. Keep your API paths under `/api/*`, and **don't name a client route `/mcp`, `/authorize`,
+`/token`, `/register`, or `/.well-known/...`** — those belong to the Worker and would collide.
 
 After the change, deploy when the owner says „veröffentliche": `npm run deploy`.
