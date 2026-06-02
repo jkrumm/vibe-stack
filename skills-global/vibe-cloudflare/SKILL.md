@@ -102,7 +102,7 @@ The Worker reads it via `c.env.BUCKET` (typed `R2Bucket`). Store only the R2 **k
 (`photo_key`); stream files back through `/api/photo/:key` — exactly like the entries example.
 
 **If they skip uploads for now:** comment out the `r2_buckets` block in `wrangler.jsonc` and the
-upload/photo routes in `src/worker/index.ts`. Tell them you can switch it on later.
+upload/photo routes in `src/worker/api.ts`. Tell them you can switch it on later.
 
 Say: *"✅ Dein Datei-Speicher steht."*
 

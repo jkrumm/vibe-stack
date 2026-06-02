@@ -15,7 +15,7 @@ message per step. Translate any error into a single calm German sentence — nev
 ## When to use this
 The owner is in any chat and says they want to build *another* app, e.g. *"Ich will noch eine App
 bauen"*, *"eine zweite App"*, *"weitere App"*, *"neu anfangen"*, *"new app"*, *"start fresh"*.
-(The first-ever setup is the 7-phase ONBOARDING, not this skill. This skill assumes Node, git, and
+(The first-ever setup is the 8-phase ONBOARDING, not this skill. This skill assumes Node, git, and
 a Cloudflare login already exist from the first app — but it re-checks and re-runs login if needed.)
 
 ## First: name the new app
@@ -133,7 +133,7 @@ npx wrangler r2 bucket create <new-app-name>-files
 ```
 
 If the owner skips uploads for now, comment out the `r2_buckets` block in `wrangler.jsonc` and the
-upload/photo routes in `src/worker/index.ts`, and tell them you can switch it on later.
+upload/photo routes in `src/worker/api.ts`, and tell them you can switch it on later.
 
 **4d — Set up the local database tables and types:**
 
@@ -145,6 +145,28 @@ npx wrangler types
 (The *live* database tables get created on first deploy — `npm run deploy` applies pending
 migrations to the live database automatically before publishing.)
 
+**4e — Create this app's token store (KV)** — the login provider needs it, and the Worker won't
+start without it:
+
+```bash
+npx wrangler kv namespace create OAUTH_KV
+```
+
+Copy the printed `id` into `wrangler.jsonc` under `kv_namespaces` → the `OAUTH_KV` binding (replace
+`REPLACE_WITH_YOUR_KV_ID`).
+
+**4f — Create this app's own access key** (`OWNER_SECRET`) — separate from the first app's:
+
+```bash
+KEY=$(openssl rand -hex 32)
+echo "$KEY" | npx wrangler secret put OWNER_SECRET
+security add-generic-password -U -s "<new-app-name>-owner-secret" -a "<new-app-name>" -w "$KEY"
+echo "Dein Zugangsschlüssel für die neue App: $KEY"
+```
+
+Tell the owner this is the **new app's own** key (each app has its own). The `vibe-connector` skill
+encapsulates 4e + 4f if you'd rather run it as one step.
+
 ## Step 5 — Deploy for the first time
 ```bash
 npm run deploy
@@ -152,10 +174,15 @@ npm run deploy
 
 `deploy` first checks everything (format, types, build, tests), so a broken app can't go live, then
 publishes. When it succeeds, Wrangler prints a public URL
-(`https://<new-app-name>.<subdomain>.workers.dev`). Confirm it actually loads (open it via the
-chrome-devtools MCP if connected, otherwise ask the owner), then celebrate:
+(`https://<new-app-name>.<subdomain>.workers.dev`). The app opens with a login screen — the owner
+enters the **new app's access key** (4f). Confirm it actually loads (open it via the chrome-devtools
+MCP if connected, otherwise ask the owner), then celebrate:
 
-> *"🎉 Deine neue App ist live! Öffne diesen Link auf deinem Handy oder Laptop: <URL>."*
+> *"🎉 Deine neue App ist live! Öffne diesen Link auf deinem Handy oder Laptop: <URL> — beim ersten Mal
+> gibst du den Zugangsschlüssel der neuen App ein."*
+
+To use the new app from anywhere (phone / Chat), run the **`vibe-connector`** skill for it too — it
+registers this app as its own Claude connector and generates its `claude-setup/` bundle.
 
 ## Step 6 — Open a NEW chat in the new project
 Both apps now exist side by side, each independent. Hand off:
@@ -170,8 +197,9 @@ fresh chat there for building features. Each project remembers its own setup via
 ## Independence rules (do not break)
 - Each app has its **own** `<name>-db` and `<name>-files`. **No shared database, ever.**
 - Never paste one app's `database_id` into another app's `wrangler.jsonc`.
-- The new app keeps the full boilerplate (Worker + React/Mantine + D1 + R2). Adapt the entries
-  example to the new idea later, in the new app's own chat.
-- AUTH hard stop still applies: this kit is for **personal, single-owner** apps with **no auth**. If
-  the new app would hold *other people's* personal data, STOP and tell the owner (in German) that it
-  needs a real developer and a proper auth provider.
+- The new app keeps the full boilerplate (one Worker = SPA + REST API + MCP connector + OAuth login,
+  D1 + R2). Each app has its **own** `OAUTH_KV` and **own** `OWNER_SECRET` — never share them.
+- AUTH: the new app is **single-owner private by its own key** (built in). The hard stop is **other
+  people**: if the new app should let *other users sign up with their own accounts* or would hold
+  *other people's* personal data, STOP and tell the owner (in German) it needs a real developer and a
+  proper auth provider. Per-staff logins → `vibe-access`.

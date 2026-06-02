@@ -134,12 +134,13 @@ overwriting. If not, create it. Fill in the interview answers. Template:
 - My goal: [their goal / why]
 
 ## How I build apps (vibe-stack)
-- My apps use the vibe-stack setup: one Cloudflare Worker (React + Mantine UI on the screen, a Hono
-  API + D1 database + R2 file storage behind it). See each project's CLAUDE.md.
+- My apps use the vibe-stack setup: one Cloudflare Worker (React + Mantine UI on the screen; a Hono
+  API + D1 database + R2 file storage behind it; an MCP connector + a single-owner login so I can use
+  the app from my phone/Claude and it stays private to me). See each project's CLAUDE.md.
 - Before telling me something is done, the agent checks it with `npm run validate` (and a screenshot
   when it can). To publish a change I just say "deploy". To undo one I say "roll back".
-- Keep things simple (KISS): the fewest moving parts that work. No auth or extra services unless I
-  explicitly ask and it's truly needed.
+- Keep things simple (KISS): the fewest moving parts that work. Beyond the built-in single-owner login,
+  don't add extra auth or services unless I explicitly ask and it's truly needed.
 ```
 
 Explain it plainly: *"Ich lege ein kleines Profil über dich an, damit ich dich in jedem Gespräch

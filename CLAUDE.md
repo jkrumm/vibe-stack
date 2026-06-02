@@ -79,9 +79,10 @@ training knowledge. **Re-verify with `/research` before changing any of them** (
 - **Cloudflare single Worker + SPA:** scaffold parity comes from `@cloudflare/vite-plugin` (1.39.1;
   builds SPA → `dist/client`, Worker → `dist/<name>`, auto-fills `assets.directory` — so omit it).
   Routing in `wrangler.jsonc`: `assets.not_found_handling: "single-page-application"` +
-  `assets.run_worker_first: ["/api/*"]` (array form needs Wrangler ≥ 4.20.0). `compatibility_date`
-  must be a real recent date. **Stay on Vite 7**: Vite 8 + `@cloudflare/vite-plugin` still has open
-  build-breaking issues (see "Keeping current" for the Vite+ note).
+  `assets.run_worker_first` (array form needs Wrangler ≥ 4.20.0) now lists the six Worker paths
+  (`/api/*`, `/mcp`, and the four OAuth endpoints — see the OAuth foundation fact below).
+  `compatibility_date` must be a real recent date. **Stay on Vite 7**: Vite 8 + `@cloudflare/vite-plugin`
+  still has open build-breaking issues (see "Keeping current" for the Vite+ note).
 - **Hono is not in Cloudflare's template** — add it. The Hono REST app lives in `src/worker/api.ts`
   (`basePath('/api')`); `src/worker/index.ts` wraps it (+ the MCP server) in the OAuth provider as the
   default export. With `run_worker_first` listing `/api/*`, `/mcp` and the OAuth paths, the asset layer
