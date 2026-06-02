@@ -79,9 +79,9 @@ If a read returns nothing: *"Für heute sind noch keine Reservierungen eingetrag
 
 - **"not authenticated" / login errors** → the Cloudflare login expired: `npx wrangler login`
   (the owner approves in their browser), then retry. Tell them in German.
-- **Cowork / no local wrangler** → say (German) that managing the live data needs the **Code tab** on
-  their Mac, and offer to continue there. To manage from **anywhere** (phone, Cowork), switch the app to
-  **API mode** with the `vibe-api-mode` skill — then the agent and the website use one shared secret
-  (Bearer token) instead of `wrangler`.
+- **Cowork / no local wrangler** → `wrangler` SQL needs the **Code tab** on their Mac. To manage from
+  **anywhere** (phone, Cowork, any chat), the app's **connector** is the way (set up via the
+  `vibe-connector` skill): the owner just talks to Claude and the connector tools read/write the data
+  over the app's authenticated API — no `wrangler` needed. Use `wrangler` here for raw, ad-hoc SQL.
 - **A request needs a field that doesn't exist** → that's a build change: offer to add it with the
   `add-data` flow and deploy, then come back to managing.

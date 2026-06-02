@@ -30,18 +30,23 @@ There is one special file called **CLAUDE.md** — that's **Claude's memory** fo
 It reminds Claude how your app works and the rules to follow. You don't need to read or
 edit it; Claude keeps it up to date. Please don't change it by hand.
 
-## How you (and others) use the finished app
+## How you use the finished app
 
-To actually use your app, just open its **web address** in a browser. On a phone, open the
-address and choose **"Add to Home Screen"** — now it sits next to your other apps and opens
-like one.
+Open your app's **web address** in any browser and enter your **access key** the first time — after
+that it stays open on that device. On a phone, choose **"Add to Home Screen"** so it sits next to your
+other apps and opens like one. Your app is private: only someone with your key can open it.
+
+You can also use it **straight from Claude** — on your phone or in any chat — once it's connected
+during setup: just ask Claude to add or show something, and it updates your app for you.
 
 ## If you're curious (totally optional)
 
 Under the hood your app is a few simple pieces, all running on Cloudflare:
 
-- **One Worker** — this is both the **screen** you see and the **logic** behind it.
+- **One Worker** — the **screen** you see, the **logic** behind it, and the **connector** that lets
+  you use the app from Claude — all in one.
 - **D1** — the **database**, where your entries and numbers are stored.
 - **R2** — **file storage**, where your photos and uploads live.
+- **A login** — one access key keeps your app private to you (on the website and from Claude).
 
 You never have to think about any of this. Just talk to Claude in the Code tab.

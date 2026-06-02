@@ -66,27 +66,33 @@ guided step at a time, in plain German. You just answer its questions and click 
 - **File storage (R2)** for photos and uploads, with the image kept out of the database.
 - **A polished look out of the box** — [Mantine](https://mantine.dev) components and charts, so
   forms, tables, and graphs look good without you styling anything.
-- **One command to publish:** you say *"deploy"* and your app is live for everyone, on every device.
+- **One command to publish:** you say *"deploy"* and your app is live on every device.
+- **Private to you, and usable from anywhere.** Your app is protected by your own access key, and it
+  **connects to Claude** — so you can add and check things from your **phone or any Claude chat**
+  ("add a workout", "what did I log this week?"), not just from your Mac. Set up once during onboarding.
 - **Claude already knows this stack.** The starter ships with skills and rules so Claude builds the
   *right* way every time, and it **tests and checks every change** before telling you it's done — so a
   broken version can't go live.
 - **Or run a small business by talking.** Beyond personal trackers, it can manage reservations, staff,
   inventory and the like: you handle the live data just by chatting ("add a reservation for 4 at 7pm",
-  "who's working Friday?"), and the website stays **private behind a login**. Just describe a business
-  tool during setup and Claude wires it up.
+  "who's working Friday?") — from your phone too — and the website stays **private behind your login**.
+  Just describe a business tool during setup and Claude wires it up.
 
 ---
 
 ## 📱 Using your app on your phone and other devices
 
-Three different things, which work differently — don't mix them up:
+A few different things, which work differently — don't mix them up:
 
-1. **Using the app** (logging things, viewing charts): works **everywhere**. Your app is just a web
-   address — open it in any phone or laptop browser. On a phone, tap *"Add to Home Screen"* and it
-   behaves like a real app, camera and all. This is your day-to-day and needs nothing else.
-2. **Changing or extending the app** (new features): happens **on your Mac**, in the Code tab. You
+1. **Using the app** (logging things, viewing charts): works **everywhere**. Your app is a private web
+   address — open it in any phone or laptop browser and enter your access key once. On a phone, tap
+   *"Add to Home Screen"* and it behaves like a real app, camera and all. This is your day-to-day.
+2. **Using it straight from Claude** (on your phone, in any chat): your app connects to Claude, so you
+   can just ask — *"add a workout"*, *"show me this week"* — without even opening the website. This is
+   set up once during onboarding.
+3. **Changing or extending the app** (new features): happens **on your Mac**, in the Code tab. You
    say what you want, Claude builds it, you say *"deploy"*. Build at the desk, use everywhere.
-3. **Undoing a change:** just say *"roll back"* — Claude can revert the last deploy.
+4. **Undoing a change:** just say *"roll back"* — Claude can revert the last deploy.
 
 ---
 
@@ -123,9 +129,10 @@ code. You maintain the **onboarding experience** and the **starter template**. S
 stack never regresses), and how the pieces fit together:
 
 - `ONBOARDING.md` — the guided, milestone-based setup Claude runs for a new owner.
-- `boilerplate/` — the Cloudflare-optimized starter (single Worker + Hono + D1 + R2, Mantine v9 +
-  `@mantine/charts`), with vendored `.claude/` skills and rules.
-- `skills-global/` — Cloudflare/Wrangler skills the onboarding installs into the owner's
+- `boilerplate/` — the Cloudflare-optimized starter: one Worker serving the React SPA + a Hono REST
+  API + an MCP server + single-owner OAuth (so every app is a documented connector), D1 + R2, Mantine
+  v9 + `@mantine/charts`, with vendored `.claude/` skills and rules.
+- `skills-global/` — Cloudflare/Wrangler + connector skills the onboarding installs into the owner's
   `~/.claude/skills/` so they apply across every app they build.
 
 Licensed under [MIT](./LICENSE).
