@@ -10,7 +10,15 @@ storage** (R2), a **secret / API key**, a CLI **database query**, or regenerated
 editing `wrangler.jsonc`.
 
 Everything runs through `npx wrangler` (the owner has no global install). All bindings live in
-`wrangler.jsonc`; the Worker reads them via `c.env.<BINDING>` (see `src/worker/index.ts`).
+`wrangler.jsonc`; the Worker reads them via `c.env.<BINDING>`.
+
+> **This handles the app's own data resources.** Every app already has its login/connector bindings —
+> the `OAUTH_KV` namespace + the `OWNER_SECRET` secret — provisioned **once** by the **`vibe-connector`**
+> skill. Here you add the app's *data*: D1, R2, and any extra secrets it needs.
+>
+> **`wrangler login` covers all of it** (database, storage, secrets, deploy, live SQL) — no API token
+> needed. The **only** thing that needs a separate Cloudflare API token is per-staff website logins
+> (Cloudflare Access) — that lives in the **`vibe-access`** skill.
 
 **Always speak German to the owner**, one calm sentence per step. Translate any error into one
 plain German sentence — never paste a raw trace. KISS: add only the resource they actually need.
@@ -85,10 +93,11 @@ npx wrangler r2 bucket create <app-name>-files
 ```
 
 If the account isn't verified yet, Cloudflare blocks this with an *"add R2 subscription / payment
-method"* step in the dashboard. Guide them through it gently, then re-run the command. Say:
+method"* step in the dashboard. **Only the checkout/payment is the owner's job** — the moment they've
+done it, **you** re-run `npx wrangler r2 bucket create` yourself. Say:
 
 > *"Cloudflare möchte dein Konto einmal bestätigen. Folge bitte dem 'R2 hinzufügen'-Schritt im
-> Browser, dann versuche ich es erneut."*
+> Browser — sag mir Bescheid, sobald das erledigt ist, dann lege ich den Speicher automatisch an."*
 
 The bucket binding is already in `wrangler.jsonc`:
 
@@ -116,12 +125,18 @@ it into a file or `wrangler.jsonc`. Pick an UPPERCASE name like `OPENAI_API_KEY`
 Say: *"Ich speichere deinen Schlüssel sicher bei Cloudflare — er landet nie im Code und ist für
 niemanden sichtbar."*
 
+Tell the owner first, so the hidden prompt doesn't scare them:
+
+> *"Gleich erscheint eine Eingabe, in der nichts angezeigt wird — das ist Absicht. Füge deinen
+> Schlüssel ein und drücke Enter."*
+
 ```bash
 npx wrangler secret put OPENAI_API_KEY
 ```
 
 Wrangler prompts for the value (the owner pastes it; it stays hidden). Then add it to the `Bindings`
-type in `src/worker/index.ts` and read it via `c.env`:
+type in `src/worker/api.ts` (and to `Env` in `src/worker/index.ts` if the Worker entry reads it) and
+read it via `c.env`:
 
 ```ts
 type Bindings = {

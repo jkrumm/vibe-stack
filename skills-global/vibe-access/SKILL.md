@@ -1,81 +1,146 @@
 ---
 name: vibe-access
-description: Make a vibe-stack app's website PRIVATE so only the owner (and people they name) can open it, using Cloudflare Access — works on the free workers.dev URL, no custom domain needed. Use when an app holds other people's data, or the owner says it must be private / "nur für mich" / "nicht öffentlich" / "nur mein Team soll das sehen" / wants a login.
+description: Add per-person staff logins to a vibe-stack app's website using Cloudflare Access — the agent sets it up ITSELF via the Cloudflare API (works on the free workers.dev URL, no domain). Use only when SEVERAL people each need their OWN login (their own email); a single owner is already private via the access key. Triggers: "mein Team soll sich einloggen", "Mitarbeiter-Logins", "jeder mit eigener E-Mail", "staff logins".
 ---
 
-# vibe-access — per-person staff logins for the website
+# vibe-access — per-person staff logins (the agent sets up Cloudflare Access)
 
 A vibe-stack app is **already private**: the built-in single-owner **access key** gates the website,
-the REST API, and the connector. So for a **single owner you do NOT need this skill** — the key is
-enough, and it keeps the connector (phone / Chat) working.
+the REST API, and the connector. **A single owner does NOT need this skill** — the key is enough and
+keeps the connector (phone / Chat) working.
 
-Use this skill only when **several staff each need their OWN login** (their own email, not a shared
-key). Cloudflare **Access** adds a per-person login page in front of the site, allowing exactly the
-emails the owner lists, on the free `*.workers.dev` URL (no domain to buy), with a one-time email code.
-It's a managed login from Cloudflare — never hand-code one.
+Use this **only** when **several staff each need their OWN login** — their own email, not a shared
+key. Cloudflare **Access** adds a per-person email login in front of the website, on the free
+`*.workers.dev` URL (no domain to buy), with a one-time email code. The agent provisions it **itself**
+via the Cloudflare API — the owner's only jobs are to create one scoped token once and name the emails.
 
-## Before you turn this on — the important trade-off
+Speak only plain German to the owner, one calm sentence per step.
 
-Enabling Access on the whole `*.workers.dev` URL gates **every** path, including `/api/*`, `/mcp`, and
-the OAuth endpoints. That **breaks the connector and the Bearer API** — Claude (and any tool) can't get
-through an interactive email login. So:
+## The one human step — a scoped Cloudflare API token
 
-- **Single owner** → don't use Access. The built-in key already makes it private *and* keeps the
-  connector / phone-API working.
-- **Staff need their own website logins** → use Access, but know it protects the **website only in
-  practice**: staff use the site (behind their email login); the "from any chat" connector won't work
-  through Access. The website still uses the shared `OWNER_SECRET` behind the scenes for its API calls,
-  so a device enters that key once *and* the staffer signs in with their email each session.
-- Keeping **both** the per-person door *and* the connector requires scoping the Access application to
-  exclude `/api/*` + `/mcp` + the OAuth paths (an advanced, path-based Access policy) — note this to the
-  owner; don't attempt it unless they specifically need both.
+`wrangler login` can do almost everything, but it **cannot** touch Cloudflare Access — only the
+Cloudflare REST API can, and that needs an **API token**. Creating + copying a token (it's shown once)
+is the one thing only the owner can do. Walk them through it, German, **least-privilege**:
 
-> The owner's `wrangler`-based data management (`vibe-operate`) goes around Access entirely (it uses the
-> Cloudflare login, not the website). The connector does **not** — it goes through the front door.
+> *"Für eigene Logins deiner Mitarbeiter brauche ich einmal einen Cloudflare-Schlüssel. Ich sage dir
+> genau, wo du klickst — es dauert eine Minute, danach mache ich alles automatisch."*
 
-## This is a dashboard click-through (guide gently, in German)
+1. Open `dash.cloudflare.com` → profile (top right) → **My Profile** → **API Tokens** → **Create Token**
+   → **Create Custom Token**. Name it e.g. `vibe-access`.
+2. Add these two permissions, both **Edit**, scope **Account → (their account)**:
+   - `Access: Apps and Policies`
+   - `Access: Organizations, Identity Providers, and Groups`
+3. Optionally set a TTL (e.g. expires in a month) — safer. **Continue → Create Token → copy it once.**
+4. The owner pastes it to you. Store it in the Mac keychain (account-wide — one token serves all their
+   apps); never write it to a file:
 
-Access policies aren't set with `wrangler`, so walk the owner through the Cloudflare dashboard, one
-click per message, plain German. Make sure the app has been deployed at least once first (so the
-`workers.dev` URL exists).
+   ```bash
+   security add-generic-password -U -s "vibe-cloudflare-api-token" -a "cloudflare" -w "<the token>"
+   ```
 
-1. **Open the app's settings.** *"Öffne im Browser das Cloudflare-Dashboard, klicke links auf
-   **Workers & Pages**, dann auf deine App, dann oben auf **Settings** und auf **Domains & Routes**."*
-2. **Turn Access on.** *"In der Zeile mit deiner `*.workers.dev`-Adresse klickst du auf **Enable
-   Cloudflare Access**."* (If Cloudflare first asks to set up **Zero Trust**, follow the free sign-up —
-   choose the **Free** plan, it does not ask for payment for a small team.)
-3. **Allow your email.** *"Klicke auf **Manage Cloudflare Access** — dort trägst du deine E-Mail-Adresse
-   ein (und die deiner Mitarbeiter, falls sie es auch sehen sollen) und speicherst."* This creates an
-   Access application with a policy that allows exactly those emails.
-4. **Test it.** *"Öffne deine App-Adresse in einem privaten Browser-Fenster. Es sollte nach deiner
-   E-Mail fragen und dir einen Code schicken — gib den Code ein, dann öffnet sich deine App. Fremde
-   ohne deine Erlaubnis kommen nicht rein."*
+> *"Danke — ich habe den Schlüssel sicher hinterlegt. Ab hier mache ich den Rest selbst."*
 
-## How login feels for the owner / their team
+## What the agent does itself (via the Cloudflare API)
 
-When they open the site, Cloudflare asks for their email and emails them a **one-time code** (default
-"one-time PIN" method). After entering it they're in for a while (a session), so it's not every click.
-No password to remember.
+Gather the inputs (the agent does this — don't ask the owner):
 
-## Free tier
+```bash
+TOKEN=$(security find-generic-password -s "vibe-cloudflare-api-token" -a "cloudflare" -w)
+ACCOUNT_ID="<read it from: npx wrangler whoami>"
+HOST="<app-name>.<subdomain>.workers.dev"        # the live URL, without https://
+API="https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/access"
+```
 
-Cloudflare's **Zero Trust Free** plan covers a small team comfortably (well within its free user limit),
-so a manager plus a handful of staff costs nothing. If the dashboard ever pushes a paid step for a tiny
-team, stop and tell the owner — don't sign them up for anything paid; the free plan is enough here.
+**Pre-flight — is Zero Trust set up?** On a brand-new account the Access org must exist before any app
+can be created (a first POST can 403 just because the org is missing). Check first:
 
-## Changing or removing access later
+```bash
+curl -s "$API/organizations" -H "Authorization: Bearer $TOKEN"
+```
 
-Same screen (**Settings → Domains & Routes → Manage Cloudflare Access**): add or remove allowed emails,
-or turn Access off to make the site public again. Tell the owner they can adjust who gets in anytime.
+If that returns no org (404), guide the owner through the one-time **free Zero Trust sign-up** (choose
+the **Free** plan — no payment for a small team), then continue. The email one-time-code login itself
+needs no setup once an email is in a policy.
 
-## If they later want a nicer address
+**1 — Keep the connector + website-API reachable.** Cloudflare evaluates the **most specific matching
+path first**, so a bypass app scoped to `$HOST/api` should take precedence over the root app for `/api`
+traffic. Create one **bypass** app per non-website path so Access steps aside there. Those paths stay
+protected by the app's **own** OAuth / Bearer (`OWNER_SECRET`) after Access steps aside — *bypass here
+means "let the app authenticate it", not "public"* (our Worker already has auth, which is why we don't
+need Cloudflare's Service-Auth / Linked-App pattern). Repeat for each, using the **exact** domain string
+(no scheme, no trailing slash, one leading slash): `$HOST/api`, `$HOST/mcp`, `$HOST/authorize`,
+`$HOST/token`, `$HOST/register`, `$HOST/.well-known`.
 
-A custom domain (e.g. `meinrestaurant.de`) is **optional** and separate: buy a domain, add it to
-Cloudflare as a zone, point the app's route at it, and Access protects that hostname the same way.
-Not required — the `workers.dev` URL with Access is already private and free.
+```bash
+curl -s -X POST "$API/apps" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{
+  "name": "<app-name> API (bypass)",
+  "type": "self_hosted",
+  "domain": "'"$HOST"'/api",
+  "policies": [{ "name": "Allow all on API path", "decision": "bypass", "include": [{ "everyone": {} }] }]
+}'
+```
+
+**2 — Require an email login for the website itself** (the catch-all `/`), allowing exactly the emails
+the owner named:
+
+```bash
+curl -s -X POST "$API/apps" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{
+  "name": "<app-name> Website",
+  "type": "self_hosted",
+  "domain": "'"$HOST"'",
+  "session_duration": "24h",
+  "policies": [{ "name": "Allowed staff", "decision": "allow",
+    "include": [ { "email": { "email": "owner@example.com" } }, { "email": { "email": "staff@example.com" } } ] }]
+}'
+```
+
+Ask the owner only for the **emails to allow** (and to confirm the test).
+
+**3 — Verify the connector survived (BLOCKING — don't skip).** The whole design hinges on the bypass
+apps taking precedence over the root app, so prove it before telling the owner anything:
+
+```bash
+curl -s "https://$HOST/.well-known/oauth-authorization-server"
+```
+
+This **must** return JSON. If instead it returns a Cloudflare Access **login page** (HTML), the root app
+is also intercepting the connector paths — **delete the root Website app immediately** (the built-in
+access key keeps the site private in the meantime), then re-check. Once that's clean, open the site in a
+private window (or ask the owner): it should ask for an email and send a one-time code, **and** the
+owner's connector (phone / Chat) should still answer. Translate any failure into one calm German
+sentence and fix it (usually a missing token permission).
+
+> The owner's `wrangler` data management (`vibe-operate`) and the connector go **around** Access (the
+> bypass apps in step 1) — only the website's visual view is behind the email login.
+
+## The dual login — say this plainly (German), so nobody panics
+
+Staff face two things and it looks confusing without a word of warning:
+
+> *"Deine Mitarbeiter melden sich mit ihrer **E-Mail** an — das ist ihre persönliche Tür. Einmal pro
+> Gerät geben sie zusätzlich deinen **Zugangsschlüssel** ein. Danach läuft alles, ganz normal."*
+
+## If the API path can't be made to work — dashboard fallback
+
+If the API keeps erroring and you can't fix it, fall back to the dashboard click-through, gently in
+German, one click per message: *Workers & Pages → deine App → Settings → Domains & Routes → **Enable
+Cloudflare Access** → **Manage Cloudflare Access*** → add the allowed emails. **Caveat to tell the
+owner:** this dashboard switch gates the **whole** address, so the **connector (phone / Chat) stops
+working** — only use this fallback if the owner doesn't need the connector. The API path above avoids
+this by bypassing the connector/API paths.
+
+## Free tier, changing access, custom domain
+
+- **Free tier:** Cloudflare's **Zero Trust Free** plan covers a small team comfortably. If the dashboard
+  ever pushes a paid step for a handful of people, stop and tell the owner — the free plan is enough.
+- **Add / remove people later:** update the Website app's `allow` policy (same API call, new email list)
+  or, via the dashboard, *Manage Cloudflare Access*. Tell the owner they can change who gets in anytime.
+- **Nicer address (optional):** a custom domain is separate and not required — the `workers.dev` URL with
+  Access is already private and free.
 
 ## If something is confusing
 
-Translate the cause into one calm German sentence and give the next single click. Common ones: the app
-wasn't deployed yet (no URL to protect → deploy first); Zero Trust not set up yet (do the free sign-up);
-the test email's code went to spam (check the spam folder).
+Translate the cause into one calm German sentence and give the next single step. Common ones: the app
+wasn't deployed yet (no URL to protect → deploy first); the token is missing a permission (re-create it
+with both Access permissions, Edit); Zero Trust not set up (do the free sign-up); the test email's code
+went to spam.
