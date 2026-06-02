@@ -12,8 +12,10 @@ export default defineConfig(async () => {
     plugins: [
       cloudflareTest({
         wrangler: { configPath: './wrangler.jsonc' },
-        // Expose the migrations to the test environment as a binding the setup file reads.
-        miniflare: { bindings: { TEST_MIGRATIONS: migrations } },
+        // Expose the migrations to the test environment, plus the access key the API checks (the
+        // tests send `Authorization: Bearer test-secret`). In production OWNER_SECRET is a Worker
+        // secret set via `wrangler secret put`, never committed.
+        miniflare: { bindings: { TEST_MIGRATIONS: migrations, OWNER_SECRET: 'test-secret' } },
       }),
     ],
     test: {

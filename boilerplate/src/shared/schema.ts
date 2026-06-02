@@ -1,5 +1,6 @@
-// Shapes shared between the API (Worker) and the screen (React).
-// The Worker validates incoming data against `newEntrySchema`; the client uses the `Entry` type.
+// Shapes shared between the API (Worker) and the screen (React), and reused by the MCP server.
+// Define a data shape ONCE here as a Zod schema; the REST route, the OpenAPI contract, and the
+// matching MCP tool all reuse it. The Worker validates incoming data; the client uses the types.
 
 import { z } from 'zod'
 
@@ -12,12 +13,20 @@ export const newEntrySchema = z.object({
 
 export type NewEntry = z.infer<typeof newEntrySchema>
 
-// One row of the `entries` table, as the API returns it.
-export interface Entry {
-  id: number
-  title: string
-  amount: number | null
-  note: string | null
-  photo_key: string | null
-  created_at: string // ISO 8601
-}
+// One row of the `entries` table, as the API returns it. This is the single source for the `Entry`
+// shape: the client type, the OpenAPI response schema, and the MCP tool output all derive from it.
+export const entrySchema = z.object({
+  id: z.number().int(),
+  title: z.string(),
+  amount: z.number().nullable(),
+  note: z.string().nullable(),
+  photo_key: z.string().nullable(),
+  created_at: z.string(), // ISO 8601
+})
+
+export type Entry = z.infer<typeof entrySchema>
+
+// The `:id` path parameter for routes that act on a single entry (validated + documented).
+export const idParamSchema = z.object({
+  id: z.coerce.number().int().positive('Ungültige ID.'),
+})
