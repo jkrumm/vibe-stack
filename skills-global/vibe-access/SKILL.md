@@ -3,19 +3,35 @@ name: vibe-access
 description: Make a vibe-stack app's website PRIVATE so only the owner (and people they name) can open it, using Cloudflare Access — works on the free workers.dev URL, no custom domain needed. Use when an app holds other people's data, or the owner says it must be private / "nur für mich" / "nicht öffentlich" / "nur mein Team soll das sehen" / wants a login.
 ---
 
-# vibe-access — put a login in front of the website
+# vibe-access — per-person staff logins for the website
 
-By default a vibe-stack site is public (anyone with the URL can open it). The moment an app holds
-**other people's data** (employees, guests, customers), the website must be **private**. Cloudflare
-**Access** does this for us: it shows a login page in front of the site and only lets in the emails the
-owner allows. It works on the free `*.workers.dev` URL — **no domain to buy** — and Cloudflare emails
-the allowed person a one-time code to sign in.
+A vibe-stack app is **already private**: the built-in single-owner **access key** gates the website,
+the REST API, and the connector. So for a **single owner you do NOT need this skill** — the key is
+enough, and it keeps the connector (phone / Chat) working.
 
-This is the **right way** to add privacy: a managed login from Cloudflare, never a hand-coded one.
+Use this skill only when **several staff each need their OWN login** (their own email, not a shared
+key). Cloudflare **Access** adds a per-person login page in front of the site, allowing exactly the
+emails the owner lists, on the free `*.workers.dev` URL (no domain to buy), with a one-time email code.
+It's a managed login from Cloudflare — never hand-code one.
 
-> Note: the **owner's own data-management is unaffected**. You read/write the live data with the
-> `vibe-operate` skill via `wrangler` (the owner's Cloudflare login), which goes around Access entirely.
-> Access only protects the *website* that humans open in a browser.
+## Before you turn this on — the important trade-off
+
+Enabling Access on the whole `*.workers.dev` URL gates **every** path, including `/api/*`, `/mcp`, and
+the OAuth endpoints. That **breaks the connector and the Bearer API** — Claude (and any tool) can't get
+through an interactive email login. So:
+
+- **Single owner** → don't use Access. The built-in key already makes it private *and* keeps the
+  connector / phone-API working.
+- **Staff need their own website logins** → use Access, but know it protects the **website only in
+  practice**: staff use the site (behind their email login); the "from any chat" connector won't work
+  through Access. The website still uses the shared `OWNER_SECRET` behind the scenes for its API calls,
+  so a device enters that key once *and* the staffer signs in with their email each session.
+- Keeping **both** the per-person door *and* the connector requires scoping the Access application to
+  exclude `/api/*` + `/mcp` + the OAuth paths (an advanced, path-based Access policy) — note this to the
+  owner; don't attempt it unless they specifically need both.
+
+> The owner's `wrangler`-based data management (`vibe-operate`) goes around Access entirely (it uses the
+> Cloudflare login, not the website). The connector does **not** — it goes through the front door.
 
 ## This is a dashboard click-through (guide gently, in German)
 
