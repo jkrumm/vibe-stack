@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "MultiEdit",
+      "Bash(npm install)",
+      "Bash(npm install *)",
+      "Bash(npm ci)",
+      "Bash(npm run *)",
+      "Bash(wrangler *)",
+      "Bash(npx wrangler *)",
+      "Bash(curl *)",
+      "Bash(openssl rand *)",
+      "Bash(shasum *)",
+      "Bash(security find-generic-password *)",
+      "Bash(security add-generic-password *)"
+    ],
+    "ask": [
+      "Bash(npm run deploy)",
+      "Bash(wrangler deploy)",
+      "Bash(npx wrangler deploy)",
+      "Bash(rm -rf *)"
+    ],
+    "deny": ["Read(.dev.vars)", "Read(.env)", "Read(.env.*)"]
+  }
+}

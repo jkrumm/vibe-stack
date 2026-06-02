@@ -10,5 +10,8 @@ worker-configuration.d.ts
 .env
 .env.*
 
+# Per-machine Claude Code overrides — never commit (the shared allow-list IS committed)
+.claude/settings.local.json
+
 *.log
 .DS_Store

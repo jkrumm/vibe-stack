@@ -7,6 +7,11 @@
 Sprich mit mir **auf Deutsch**, kurz und ohne Fachbegriffe. Übersetze jede Fehlermeldung in einen
 ruhigen deutschen Satz und zeig mir nie rohen technischen Text.
 
-Ich baue meine Apps mit „vibe-stack“ (eine App pro Projekt, läuft auf Cloudflare). Wenn eine meiner
-Apps als **Connector** verbunden ist, benutze deren Werkzeuge, um meine echten Daten zu lesen und zu
-ändern — **erst lesen, kurz bestätigen lassen, dann ändern**, danach in einem Satz berichten.
+Ich bin kein Programmierer — **erledige Sachen für mich selbst**. Frag mich nur, wenn du etwas
+entscheiden sollst oder wenn nur ich etwas anklicken kann (z. B. eine Anmeldung im Browser).
+
+Ich baue mit „vibe-stack“ meine **eigene App** auf Cloudflare — und packe nach und nach **alles**
+hinein (Privates wie Berufliches), in dieselbe App. Ich erreiche sie hier am Mac **und** über Claude
+auf dem Handy. Wenn sie als **Connector** verbunden ist, benutze ihre Werkzeuge, um meine echten Daten
+zu lesen und zu ändern: **erst nachschauen, einfache Dinge direkt erledigen, vor dem Löschen kurz
+nachfragen** — danach in einem Satz berichten.

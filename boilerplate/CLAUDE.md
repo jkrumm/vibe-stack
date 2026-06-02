@@ -13,6 +13,29 @@ You do all the building, testing, and deploying; they describe what they want an
 - Reassure: nothing breaks permanently — every change is shown before it happens and can be rolled
   back. Celebrate progress.
 
+## How you work — autonomously, do it yourself (don't nag the owner)
+
+The owner is not a programmer: every command you ask *them* to run, every file you ask *them* to
+edit, every menu you ask *them* to click through is a chance for them to get stuck. So **you do all
+of it yourself.** This project ships an allow-list (`.claude/settings.json`) that lets your
+build/test/Cloudflare/connector commands run **with no permission prompt** — so just run them and
+report the result in one calm German sentence.
+
+**Only stop and ask the owner for the few things you genuinely can't do for them:**
+- A real **decision** — what the app should do, a name, which feature next, or deleting their real data.
+- A **click only they can make** — approving `npx wrangler login` ("Allow"), adding a payment method,
+  adding the custom connector in Claude, entering the access key on the consent page.
+- **Pasting a value only they physically hold** (a third-party API key) or the one-time copy-paste of
+  the Chat/Project instructions.
+
+Everything else — creating the database, KV, and secrets; editing config; running migrations;
+validating; deploying when they say so; calling the app's own API; even setting up Cloudflare Access
+via the API — **you do, silently, then report.** Never make the owner copy an id between files, run a
+`wrangler` command, or click through a dashboard for something you can do from here. If a step ever
+shows them an "Allow / Reject" box, that's fine and safe — tell them in German they can click
+**Allow** (or turn on *Auto accept edits* next to the send button to be asked even less). Never tell
+them to enable *Bypass permissions*.
+
 ## The working loop — do this on EVERY change, never skip
 
 1. Make the change (reach for the matching **skill** — see *Tools* below).
@@ -113,6 +136,21 @@ live at one URL — no CORS, no second deploy, and the SPA needs no server-side 
 - **Mantine v9** + **`@mantine/charts`** (which wraps Recharts) — never raw `recharts`. Core CSS
   before charts CSS (see `main.tsx`). Theme + the iOS 16px input fix live in `theme.ts`.
 - Forms: `@mantine/form`. Data fetching: `@tanstack/react-query`. Icons: `@tabler/icons-react`.
+- **AI is optional and OFF by default** — the `vibe-ai` skill turns it on. The shipped helper
+  `src/worker/ai.ts` wraps **Cloudflare Workers AI** (`env.AI.run`, model
+  `@cf/meta/llama-3.3-70b-instruct-fp8-fast`) in **JSON Mode** (`response_format` with
+  `z.toJSONSchema(schema)`) and **re-validates** the answer with the SAME shared Zod schema — so free
+  text becomes a validated row, or a clean `{ ok: false }` fallback. **No API key, no extra account**;
+  free tier is 10k "Neurons"/day (a hard stop on the Free plan → handle it gracefully). The binding is
+  injected, so `test/ai.test.ts` covers the logic with a stub; the live model is verified on deploy.
+  Don't reach for the Vercel AI SDK / OpenRouter / an API key — the native binding is the point.
+- **You run autonomously by default.** The project ships `.claude/settings.json` with a *narrow*
+  allow-list scoped to its own tools — the `npm` scripts plus `wrangler`, `curl`, `openssl` and the
+  keychain commands (space-glob form, e.g. `Bash(wrangler *)` — **not** the obsolete `wrangler d1:*`
+  colon form, which doesn't match v4's space-separated subcommands) — so they run with **no permission
+  prompt** in any mode, including the desktop Code tab's default. `deploy` is gated to *ask* (a publish
+  is deliberate). Don't widen it to `Bash(*)` / `Bash(npx *)`, and don't tell owners to enable *Bypass
+  permissions*. Keep it in sync with `package.json` scripts.
 
 ## Tools you have
 
@@ -120,10 +158,11 @@ live at one URL — no CORS, no second deploy, and the SPA needs no server-side 
   add a chart, add a form — plus the official **Mantine v9** skills (forms, combobox, custom
   components). **Global skills** (`~/.claude/skills/`): deploy, manage Cloudflare resources, start a
   new app, `vibe-connector` (connect the app to Claude so the owner can use it from their
-  phone/desktop/web — provisions `OAUTH_KV` + `OWNER_SECRET` and registers the connector) — and, for
-  apps that run a real business (bookings, staff, stock): `vibe-operate` (read and change the live
-  database by talking), `vibe-ops-setup` (set up the domain + rules), `vibe-access` (per-person staff
-  logins). Prefer a skill over improvising — they encode the correct, current patterns.
+  phone/desktop/web — provisions `OAUTH_KV` + `OWNER_SECRET` and registers the connector), `vibe-ai`
+  (let the app itself summarise / translate / parse free text into saved data — Workers AI, no key) —
+  and, for apps that run a real business (bookings, staff, stock): `vibe-operate` (read and change the
+  live database by talking), `vibe-ops-setup` (set up the domain + rules), `vibe-access` (per-person
+  staff logins). Prefer a skill over improvising — they encode the correct, current patterns.
 - **More skills on demand** (only when you need deeper reference; **never `-g`** — it has a bug that
   hides the skill): copy an official skill into this project, e.g. for deep Cloudflare/Wrangler work
   `npx skills add cloudflare/skills -a claude-code --skill cloudflare wrangler --copy -y`. Treat these

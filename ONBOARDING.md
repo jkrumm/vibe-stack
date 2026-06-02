@@ -21,6 +21,12 @@ your script. Follow the phases in order; finish each before starting the next.
    ecosystem moves. If you must look something up, prefer the project's skills.
 6. **Announce each milestone.** End every phase with a short German "✅" line so the owner feels
    progress (e.g. *"✅ Geschafft — deine Werkzeuge sind bereit. Weiter zu Schritt 3 von 8."*).
+7. **Do the work yourself.** You run every command and edit every file — the owner is not a
+   programmer. The project you create ships an allow-list so your build/Cloudflare/connector commands
+   run without prompting. Only the genuine human steps in *The account boundary* (browser logins, a
+   payment method, the connector clicks, pasting a value they hold) are theirs — name those plainly,
+   do everything else silently and report the result. Never make the owner copy an id between files,
+   run a `wrangler` command, or click through a dashboard for something you can do from here.
 
 There are **8 phases**. Tell the owner that up front, in one sentence, so they know it's finite.
 
@@ -46,8 +52,9 @@ a couple of questions), then they just chat to build their app.
 
 Ask a **short** interview (one question at a time, conversational):
 1. *Wie heißt du?* (their name)
-2. *Was soll deine erste App können?* (Often already in their opening message — confirm it instead
-   of re-asking.)
+2. *Was soll deine App können?* (Often already in their opening message — confirm it instead of
+   re-asking.) It's **one** app that grows with them — a food log today, a workout tracker or a
+   business tool later, all in the same place; you don't make a separate app per idea.
 3. *Was möchtest du damit erreichen?* (the goal / why — for their profile)
 4. *Gibt es etwas, das dir bei Technik Sorgen macht?* (so you can reassure and adapt)
 
@@ -81,9 +88,9 @@ node -v ; git --version ; npx wrangler --version ; brew -v
   ```
 
   Wait for them to confirm it finished. Homebrew almost always prints **"Next steps"** about adding
-  itself to the PATH — run those lines for them (or have them paste them), **then have them open a
-  fresh Terminal/chat** so `brew` and `node` are found. (If `node` "isn't found" right after install,
-  this is the cause.)
+  itself to the PATH — **run those lines for them yourself**, then ask the owner only to **open a
+  fresh Terminal/chat** (the one thing you can't do) so `brew` and `node` are found. (If `node`
+  "isn't found" right after install, this is the cause.)
 - **Install Node + git** (you can run this yourself once brew exists):
 
   ```bash
@@ -130,6 +137,9 @@ overwriting. If not, create it. Fill in the interview answers. Template:
 
 - I'm not a programmer. Explain things simply and in plain language.
 - **Always talk to me in German.** Translate any error into one calm sentence.
+- **Do the work for me yourself** — run the commands, change the files, set things up. Only ask me to
+  decide things (what to build) or to click the few things only I can (a browser login, a payment
+  method, connecting an app to Claude).
 - What I'm building: [their app idea]
 - My goal: [their goal / why]
 
@@ -236,7 +246,9 @@ npx wrangler kv namespace create OAUTH_KV
 ```
 
 Copy the `id` it prints into `wrangler.jsonc` under `kv_namespaces` → the `OAUTH_KV` binding (replace
-`REPLACE_WITH_YOUR_KV_ID`). The app won't start without this, so don't skip it.
+`REPLACE_WITH_YOUR_KV_ID`). The app won't start without this, so don't skip it. Say it plainly — never
+recite "OAUTH_KV" or "token store" at the owner: *"Ich richte noch einen kleinen, sicheren Ablageort
+für deinen Login ein — das mache ich automatisch."*
 
 **5f — Create the owner's access key** (`OWNER_SECRET`). This one secret protects the website, the API,
 and the connector. Generate it, set it on the app, keep a copy in the Mac keychain (so you can manage
@@ -329,6 +341,8 @@ The owner now has a working, live app. Hand off to everyday development:
    - *"Füge ein Feld für Eiweiß in Gramm hinzu."*
    - *"Zeig mir ein Diagramm der letzten 30 Tage."*
    - *"Mach die Knöpfe blau."*
+   - *"Ich tippe 'Handvoll Erdbeeren mit zwei Löffel Skyr' und die App trägt es selbst ein."* (the app
+     understands free text — turn on AI in the server with the **`vibe-ai`** skill; free, no API key)
    - *"Veröffentliche die Änderung."* (you run `npm run deploy`)
    - *"Mach die letzte Veröffentlichung rückgängig."* (you run `wrangler rollback`)
 3. **How the agent works for them** — reassure, in German: *"Bei jeder Änderung prüfe ich automatisch,
