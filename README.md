@@ -2,9 +2,11 @@
 
 **Build your own app by chatting with Claude — no coding required.**
 
-vibe-stack is a starter kit for people who can't (yet) program but want their own real app:
-a habit tracker, a recipe box, a little dashboard, a tool for their hobby. You describe what
-you want in plain language, Claude builds it, and one command puts it online.
+vibe-stack is a starter kit for people who can't (yet) program but want their own real app — **one
+app that grows with you**: start with a habit tracker, then add a recipe box, a workout log, even a
+little tool for your business — all in the **same** private app. You describe what you want in plain
+language, Claude builds it, and one command puts it online — reachable on your Mac **and** from Claude
+on your phone.
 
 It runs entirely on [Cloudflare](https://www.cloudflare.com/)'s generous free tier — one small
 app serves both your screen (React + [Mantine](https://mantine.dev)) **and** your data (an API +
@@ -21,9 +23,9 @@ hosting bill, no surprise costs.
 
 You need exactly two things:
 
-1. **A Claude Pro subscription** — about **$20/month** (≈ €20 + local VAT). Pro *includes Claude
-   Code*, the part that builds software for you. You do **not** need the expensive Max plan. The
-   only limit is how much you can do in a rolling time window; for weekend tinkering that's plenty.
+1. **A Claude Pro subscription.** Pro *includes Claude Code*, the part that builds software for you —
+   the **Free** plan can't use it, and you do **not** need the **Max** plan. The only limit is how much
+   you can do in a rolling time window; for weekend tinkering that's plenty.
 2. **The Claude desktop app on your Mac** — download it from [claude.com](https://claude.com),
    sign in with your Pro account, and open the **Code** tab. That's a friendly point-and-click
    view of Claude Code — **no terminal required**. It shows you each change and asks before doing
@@ -59,17 +61,17 @@ guided step at a time, in plain German. You just answer its questions and click 
 
 ## 📦 What you get
 
-- **One app, one deploy.** Your screen and your data ship together from a single Cloudflare Worker.
-  No two URLs, no glue to maintain.
+- **One app that holds everything, one deploy.** Your screen and your data ship together from a single
+  Cloudflare Worker, and every new thing you build lives in the *same* app. No two URLs, no glue.
 - **A real database that grows with you (D1).** Everything your app remembers lives here. Over time
   it becomes *your* knowledge base — every new feature you ask for builds on the same data.
 - **File storage (R2)** for photos and uploads, with the image kept out of the database.
 - **A polished look out of the box** — [Mantine](https://mantine.dev) components and charts, so
   forms, tables, and graphs look good without you styling anything.
 - **One command to publish:** you say *"deploy"* and your app is live on every device.
-- **Private to you, and usable from anywhere.** Your app is protected by your own access key, and it
-  **connects to Claude** — so you can add and check things from your **phone or any Claude chat**
-  ("add a workout", "what did I log this week?"), not just from your Mac. Set up once during onboarding.
+- **Private to you, usable from anywhere.** Protected by your own access key, and **connected to
+  Claude** — so you add and check things from your phone or any Claude chat, not just your Mac (more in
+  *Using your app on your phone* below).
 - **Claude already knows this stack.** The starter ships with skills and rules so Claude builds the
   *right* way every time, and it **tests and checks every change** before telling you it's done — so a
   broken version can't go live.

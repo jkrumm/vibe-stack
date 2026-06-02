@@ -59,6 +59,11 @@ deploy. Tell the owner in one calm German sentence that you found and fixed some
    > *"Tipp: Auf dem Handy kannst du im Browser-Menü 'Zum Home-Bildschirm' tippen — dann fühlt sich
    > deine App wie eine echte App an."*
 
+   **Very first deploy only:** on a brand-new account Wrangler may ask in the terminal to register a
+   free `workers.dev` subdomain (answer **yes**), and the new URL can be unreachable (a "523") for up
+   to a minute. Reassure, in German: *"Beim allerersten Mal kann die Adresse eine knappe Minute
+   brauchen, bis sie reagiert — das ist ganz normal, einfach kurz warten."*
+
 ## Steps — roll back (undo the last deploy)
 
 The owner says *"rückgängig"* / *"roll back"*. Reassure first, then run it:

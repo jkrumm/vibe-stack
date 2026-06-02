@@ -8,14 +8,17 @@
 ## What this project is
 
 A "keep-it-stupid-simple" full-stack kit for **beginners who can't really program** and want a
-real, deployable app built entirely by talking to Claude Code. It rides Cloudflare's free tier:
-one Worker serves a React SPA *and* a Hono API, backed by D1 (database) and R2 (file storage).
+real, deployable app — **one growing, fully-enabled personal environment, not many single-purpose
+apps** — built entirely by talking to Claude Code. It rides Cloudflare's free tier: one Worker serves
+a React SPA *and* a Hono API, backed by D1 (database) and R2 (file storage), plus an MCP server + OAuth
+connector so the same environment answers from the local Code tab **and** from claude.ai on phone/desktop.
 
 **Two flavors, same boilerplate.** (1) A **personal tracker** (the default) — build a little app for
 yourself. (2) An **operations tool** — run a small business by *talking*: the D1 database is the
 business's memory, the agent reads and writes the live data (via the `vibe-operate` skill +
-`wrangler d1 execute --remote`, authenticated by the owner's own Cloudflare login — no API secret),
-and the website is **private** behind Cloudflare Access. The ops flavor is layered on at setup
+`wrangler d1 execute --remote`, authenticated by the owner's own Cloudflare login — no API secret for
+data ops), and the website is **private** behind the owner's access key (Cloudflare Access is layered
+on only when staff each need their own login). The ops flavor is layered on at setup
 (`vibe-ops-setup`), not a second boilerplate.
 
 **Audience:** the author's German-speaking, non-technical friends. Two consequences:
@@ -26,9 +29,14 @@ and the website is **private** behind Cloudflare Access. The ops flavor is layer
 
 ## Locked architecture decisions
 
-1. **One growing app, its own D1.** Each owner gets a single app with its own D1 database. New
-   "apps" are new pages/features in the *same* project; the database becomes their personal
-   knowledge base. No shared cross-app DB, no microservices, no second deploy target.
+1. **One growing personal environment, its own D1.** Each owner gets a **single fully-enabled app** —
+   one Worker (Hono API + website + MCP + OAuth) with one D1 — and builds **everything** into it:
+   private *and* work, a food log *and* a workout tracker *and* a business domain, all as new
+   pages/features in the *same* project. The D1 is the one growing knowledge base; the connector makes
+   it a **personal agent** reachable identically from the local Code tab and from claude.ai
+   (phone/desktop). This is the model — **not** a factory for many single-purpose apps. No shared
+   cross-app DB, no microservices, no second deploy target. (A genuinely separate environment is a rare
+   escape hatch — `vibe-new-app` — never the default; a new "app" is normally a new page here.)
 2. **Single Worker.** The Hono REST API, the MCP server, the OAuth provider, and the React SPA all
    ship from one Worker in one `wrangler deploy`. Never split into Pages + Workers. No CORS, no second
    URL. (Standard foundation — see verified facts: every app is a documented connector + API + OAuth.)
@@ -56,14 +64,14 @@ and the website is **private** behind Cloudflare Access. The ops flavor is layer
 | Path | Purpose |
 |-|-|
 | `README.md` | Human-facing intro + the one paste-line + where to literally start (Code tab → Select folder). Ends with a pointer telling Claude to read `ONBOARDING.md`. |
-| `ONBOARDING.md` | The guided, **milestone-based** 7-phase setup Claude runs for a new owner. The heart of the product. |
+| `ONBOARDING.md` | The guided, **milestone-based** 8-phase setup Claude runs for a new owner. The heart of the product. |
 | `boilerplate/` | The Cloudflare-optimized starter app (single Worker serving SPA + Hono REST API + MCP server + OAuth provider, D1 + R2, Mantine v9 + `@mantine/charts`, Vitest + Biome). Self-contained, committed, runnable. |
 | `boilerplate/CLAUDE.md` | The always-on agent contract: German communication, the validate-before-done loop, hard rules, verified facts. |
 | `boilerplate/.claude/skills/` | Per-project how-to skills (add-page/data/chart/form) + vendored Mantine v9 skills. |
 | `boilerplate/.claude/rules/` | Path-scoped edit-time conventions (`ui.md`, `worker-data.md`, `testing.md`). |
 | `boilerplate/test/` | Workerd integration tests (`@cloudflare/vitest-pool-workers`) + setup. |
 | `boilerplate/biome.jsonc` | The single formatter/linter config. `boilerplate/.mcp.json.example` | optional chrome-devtools MCP. |
-| `skills-global/` | Global skills copied into `~/.claude/skills/`: `vibe-deploy`, `vibe-cloudflare`, `vibe-new-app`, `vibe-connector` (connect the app to Claude as a custom connector — provision `OAUTH_KV` + `OWNER_SECRET`, deploy, register, generate `claude-setup/`), plus the ops set — `vibe-operate` (run live D1 by talking), `vibe-ops-setup` (turn an app into a business tool), `vibe-access` (per-person staff logins via Cloudflare Access). The old `vibe-api-mode` is folded into the base boilerplate. |
+| `skills-global/` | Global skills copied into `~/.claude/skills/`: `vibe-deploy`, `vibe-cloudflare`, `vibe-new-app`, `vibe-connector` (connect the app to Claude as a custom connector — provision `OAUTH_KV` + `OWNER_SECRET`, deploy, register, generate `claude-setup/`), plus the ops set — `vibe-operate` (run live D1 by talking), `vibe-ops-setup` (turn an app into a business tool), `vibe-access` (per-person staff logins — the agent provisions Cloudflare Access **itself** via a scoped Cloudflare API token, dashboard click-path as fallback), `vibe-ai` (turn on in-app AI — adds the `env.AI` binding + an example route over the shipped `boilerplate/src/worker/ai.ts`, so the website/autonomous tasks can summarise/translate/parse free text via Workers AI, no key). The old `vibe-api-mode` is folded into the base boilerplate. |
 | `boilerplate/claude-setup/` | Git-tracked paste bundle (German) for the consumer surfaces that have no API — `PROJEKT-ANWEISUNGEN.md`, `ANWEISUNGEN-GLOBAL.md`, `EINFUEGEN.md`, `manifest.json`. `vibe-connector` fills it from the real project and drives the copy-paste ritual. Only Chat/Cowork need it. |
 
 ## Verified tech facts — do NOT regress (verified 2026-06-02)
@@ -128,17 +136,48 @@ training knowledge. **Re-verify with `/research` before changing any of them** (
   guardrails live in `boilerplate/CLAUDE.md` (always-on) and in skills (intent-triggered); `paths:`
   rules are edit-time reinforcement only. SKILL.md frontmatter: `name` + a third-person `description`
   (what + WHEN); only those preload, the body loads on demand.
+- **The agent runs autonomously via a committed allow-list, not a permissive mode.**
+  `boilerplate/.claude/settings.json` ships a *narrow* `permissions.allow` — the `npm` scripts +
+  `wrangler` + `curl`/keychain, in **space-glob** form like `Bash(wrangler *)` (Claude Code's `:*` is a
+  trailing wildcard only, so the obsolete `wrangler d1:*` colon form does NOT match v4's space-separated
+  `wrangler d1 create`) — allow-rules silence prompts in **any** mode
+  including the desktop Code tab's default, and a project `settings.json` is **auto-trusted** (no
+  dialog). `deploy` + `rm -rf` are `ask`; `.dev.vars` / `.env` reads are `deny`. Do **not** ship
+  `defaultMode: bypassPermissions`/`auto` (buggy/ignored on desktop — GH #61501/#62076 — and unsafe in
+  an auto-trusted template), and never tell owners to enable Bypass. The allow-list must mirror
+  `boilerplate/package.json` scripts.
 - **chrome-devtools MCP** (`chrome-devtools-mcp` 1.1.1, Node engines `^20.19||^22.12||>=23`) ships as
   an **optional, off-by-default** `boilerplate/.mcp.json.example` (`--isolated --headless`,
   project-scoped so Claude approval-gates it). The agent uses it to screenshot the running app and
   read the console. The core path must work without it. This is **not** "Claude for Chrome".
-- **Live-data ops + privacy (the ops flavor):** the agent manages live data with
-  `wrangler d1 execute <db> --remote --command "…" [--json]` (reads AND writes; authenticated by
-  `wrangler login`; Code tab only — Cowork/cloud can't reach it). **Cloudflare Access works on
-  `*.workers.dev`** with no custom domain: dashboard *Workers & Pages → app → Settings → Domains &
-  Routes → Enable Cloudflare Access → Manage Cloudflare Access* (allow the owner's email; default login
-  = one-time email code; the free Zero Trust tier covers a small team). Access policies are dashboard-
-  only, **not** set via `wrangler`.
+- **Workers AI is the optional in-app AI (verified 2026-06-02), OFF by default — the `vibe-ai` skill
+  turns it on.** Chosen path: **plain `env.AI.run()` JSON Mode**, NOT the Vercel AI SDK. The
+  `workers-ai-provider` 3.x pulls in AI SDK **v6**, where `generateObject` is deprecated (→
+  `generateText` + `Output.object`) while Cloudflare's docs still show the old call (doc/code mismatch),
+  plus bundle weight against the 3 MB free limit — and a Cloudflare-locked app needs no provider
+  abstraction. So `boilerplate/src/worker/ai.ts` calls `env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+  { messages, response_format: { type: 'json_schema', json_schema } })`, feeding it **Zod v4's native
+  `z.toJSONSchema(schema)`** (no `zod-to-json-schema` dep — the SAME shared schema the REST/MCP layers
+  use), then **re-validates** with `safeParse`. That model is on the JSON-Mode list + good at German;
+  GLM-4.7-Flash is the cheaper multilingual alt (function-calling, not JSON-Mode). Free tier = **10k
+  Neurons/day/account**, a **hard fail** on the Workers Free plan → the helper returns a graceful
+  `{ ok: false }`, never bad data. No API key, no extra account. The binding is dependency-injected so
+  `test/ai.test.ts` covers the logic with a stub; the live model call is deploy-only.
+- **Auth model + live-data ops + privacy (the ops flavor):** one `npx wrangler login` (OAuth, all
+  scopes by default, auto-refreshing — verified 2026-06-02) is the **only** auth the base needs: it
+  covers D1/R2/KV create, `secret put`, `deploy`, and `wrangler d1 execute <db> --remote` reads AND
+  writes (the agent's live-data path; Code tab only — Cowork/cloud can't reach it). Do **not** push a
+  Cloudflare API token as the default — for a non-technical owner it's ~8–11 dashboard clicks, a
+  shown-once secret, never-expiring full-account scope, and it does **not** skip the R2 payment gate.
+  The **one** thing wrangler can't do is **Cloudflare Access**: its apps + policies are set via the
+  Cloudflare REST API (`POST /accounts/{id}/access/apps` + `/access/policies`), **not** `wrangler`. So
+  `vibe-access` has the agent provision Access **itself** with a *scoped, TTL'd* Cloudflare API token
+  (Account → `Access: Apps and Policies` + `Access: Organizations, Identity Providers, and Groups`,
+  Edit), stored in the Mac keychain; the dashboard click-path (*Workers & Pages → app → Settings →
+  Domains & Routes → Enable Cloudflare Access*) is the documented fallback. **Cloudflare Access works
+  on `*.workers.dev`** with no custom domain; the free Zero Trust tier covers a small team; default
+  login = one-time email code. The Access-via-API path is documented but **not deploy-verified** (no
+  live account here) — re-verify on the next "Keeping current" pass.
 - **R2 has a gate the others don't:** enabling R2 requires completing a checkout / "add R2
   subscription" flow that in practice needs a **payment method on file**, even though usage stays
   free. D1, Workers, and Static Assets do not. The onboarding must warn the owner this is a
@@ -170,7 +209,12 @@ The boilerplate is a frozen snapshot, so it can drift. When updating: run `/rese
 pieces (Mantine, Wrangler/`@cloudflare/vite-plugin`, Hono, `hono-openapi`, Cloudflare assets config,
 Vitest + `@cloudflare/vitest-pool-workers`, Biome, **`@cloudflare/workers-oauth-provider` + `@hono/mcp`
 + `@modelcontextprotocol/sdk`** (re-run the zod-v4 ↔ MCP-SDK spike), the Claude **connector** auth
-contract + consumer-config UI click-paths, chrome-devtools-mcp, Claude plan + desktop facts), refresh
+contract + consumer-config UI click-paths, the Cloudflare **auth model** (wrangler-login scope
+coverage) + the **Access-via-API** token recipe + endpoints (deploy-verify it), Claude Code
+**permission-mode / desktop** behavior (the `.claude/settings.json` allow-list must mirror
+`package.json`; GH #61501/#62076 churn), **Workers AI** (the free Neuron/day tier, the JSON-Mode model
+list + best German model, and the `workers-ai-provider` ↔ AI-SDK-v6 churn — re-confirm plain
+`env.AI.run` JSON Mode still beats the SDK), chrome-devtools-mcp, Claude plan + desktop facts), refresh
 the "Verified tech facts" block with a new date, then update `boilerplate/` and the skills to match.
 
 - **Vite+ (viteplus.dev):** evaluated 2026-06-01 → **not adopted**. It's free (MIT) but alpha

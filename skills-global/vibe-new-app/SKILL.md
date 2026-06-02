@@ -1,13 +1,20 @@
 ---
 name: vibe-new-app
-description: Scaffold a second (or third) independent vibe-stack app — clone the kit, copy the boilerplate to ~/vibe-apps/<name>, rename it, npm install, connect Cloudflare (own DB + R2), and deploy. Use when the owner wants a new app, another app, a second app, to start fresh, or says "neue App" / "weitere App".
+description: RARELY needed — vibe-stack is ONE growing app, so a new thing is normally a new page (use add-page / add-data), NOT a new app. Only scaffold a fully separate app (its own DB + R2 + URL) when the owner explicitly insists on an isolated environment — confirm they don't just mean a new feature first. Then clone the kit, copy the boilerplate to ~/vibe-apps/<name>, rename, npm install, connect Cloudflare, deploy. Triggers: "wirklich eine eigene, getrennte App", "komplett separate app", "neu anfangen".
 ---
 
 # vibe-new-app
 
-Scaffold a **brand-new, independent** vibe-stack app for an owner who already has at least one.
-Each app is fully separate: its **own** Cloudflare Worker, its **own** D1 database, its **own** R2
-bucket. **There is NO shared database** — never point a new app at an existing app's `database_id`.
+> **Usually you do NOT want this.** vibe-stack is **one growing app** — the owner builds *everything*
+> into the same project (food log, workout, a business domain, …), with one D1 as the growing knowledge
+> base, reachable from the Mac and from Claude on the phone. **A new feature is a new page in the
+> existing app** (`add-page` / `add-data`), *not* a new app. Create a **separate** app only when the
+> owner genuinely wants an isolated environment with its own data and URL — a rare exception.
+
+Scaffold a **brand-new, independent** vibe-stack app for an owner who explicitly wants one *separate*
+from their existing app. Each app is fully separate: its **own** Cloudflare Worker, **own** D1 database,
+**own** R2 bucket. **There is NO shared database** — never point a new app at an existing app's
+`database_id`.
 
 The owner is non-technical and German-speaking. Speak to them only in **plain German**, one short
 message per step. Translate any error into a single calm German sentence — never show a raw trace.
@@ -17,6 +24,15 @@ The owner is in any chat and says they want to build *another* app, e.g. *"Ich w
 bauen"*, *"eine zweite App"*, *"weitere App"*, *"neu anfangen"*, *"new app"*, *"start fresh"*.
 (The first-ever setup is the 8-phase ONBOARDING, not this skill. This skill assumes Node, git, and
 a Cloudflare login already exist from the first app — but it re-checks and re-runs login if needed.)
+
+**First, confirm they really want a separate app.** The default is to grow their existing one, so ask
+in German before scaffolding anything:
+
+> *"Möchtest du wirklich eine **komplett eigene, getrennte** App (mit eigener Datenbank) — oder soll
+> ich die neue Sache einfach in deine bestehende App einbauen? Meistens ist das Zweite gemeint."*
+
+Only continue here if they confirm a fully separate one. If they just want a new feature, use
+`add-page` / `add-data` in their existing project instead.
 
 ## First: name the new app
 Ask once, in German:

@@ -21,9 +21,9 @@ Explain the model in two sentences, then the privacy reality up front:
 > *"Wir bauen dir ein Werkzeug, mit dem du deinen Betrieb per Sprache verwaltest: Ich merke mir alles in
 > deiner Datenbank, du sagst mir einfach, was du brauchst. Eine Webseite zeigt dir alles übersichtlich."*
 
-> *"Wichtig: Hier stehen Daten von anderen Menschen drin (z. B. Mitarbeiter, Gäste). Deine App ist
-> deshalb von Anfang an **privat** — sie öffnet sich nur mit deinem **Zugangsschlüssel**. Du verwaltest
-> alles selbst: von überall (Handy, Chat) oder hier am Mac. Ich programmiere keinen eigenen Login."*
+> *"Wichtig: Hier stehen auch Daten von anderen Menschen drin (z. B. Mitarbeiter, Gäste). Deine App
+> ist deshalb von Anfang an **privat** — sie öffnet sich nur mit deinem **Zugangsschlüssel**. Du
+> verwaltest alles selbst, von überall oder hier am Mac."*
 
 This is the **AUTH boundary done right**: the app holds other people's data, so it stays private — the
 single-owner **access-key login is built in** (one owner). If several **staff** need their *own* logins

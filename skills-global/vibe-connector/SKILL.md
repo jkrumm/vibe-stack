@@ -49,9 +49,8 @@ echo "Dein Zugangsschlüssel: $KEY"
 
 Tell the owner, in German:
 
-> *"Das ist dein **Zugangsschlüssel** — behandle ihn wie ein Passwort. Ich habe ihn sicher hinterlegt.
-> Du gibst ihn gleich zweimal ein: einmal beim Verbinden mit Claude und einmal in deiner Webseite.
-> Danach musst du ihn dir nicht merken."*
+> *"Das ist dein **Zugangsschlüssel** — behandle ihn wie ein Passwort. Ich habe ihn sicher hinterlegt;
+> du musst ihn dir nicht merken. Du gibst ihn gleich beim Verbinden ein."*
 
 Later you read it back without showing it again:
 
@@ -76,7 +75,8 @@ Read the printed URL — `https://<app-name>.<subdomain>.workers.dev`. The conne
 This part happens in the Claude app/website, and only the owner can click it. Walk them through it in
 German, one line at a time. Give them the exact connector URL.
 
-> *"Jetzt verbinden wir deine App mit Claude:*
+> *"Jetzt verbinden wir deine App mit Claude. (Ein **Connector** ist einfach die Brücke, über die
+> Claude im Chat deine App bedienen kann.)*
 > 1. *Öffne in Claude die **Einstellungen** und dort **Connectors** (Verbindungen).*
 > 2. *Klicke **Add custom connector** (eigenen Connector hinzufügen).*
 > 3. *Füge diese Adresse ein: **`https://<app-name>.<subdomain>.workers.dev/mcp`** und bestätige.*
