@@ -16,6 +16,7 @@
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
+    "@cloudflare/workers-oauth-provider": "0.7.0",
     "@hono/mcp": "0.3.0",
     "@hono/standard-validator": "0.2.2",
     "@mantine/charts": "^9.2.0",

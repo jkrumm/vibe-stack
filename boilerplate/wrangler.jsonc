@@ -10,8 +10,17 @@
   "assets": {
     // Unknown paths return index.html so the single-page app can handle its own routing.
     "not_found_handling": "single-page-application",
-    // Only /api/* runs the Worker; everything else is served straight from static assets.
-    "run_worker_first": ["/api/*"]
+    // These paths run the Worker; everything else is served straight from static assets. /api/* is
+    // the REST API, /mcp is the connector endpoint, and the rest are the OAuth provider's endpoints
+    // (the consent page, token + dynamic client registration, and the discovery document).
+    "run_worker_first": [
+      "/api/*",
+      "/mcp",
+      "/authorize",
+      "/token",
+      "/register",
+      "/.well-known/oauth-authorization-server"
+    ]
   },
   // Free request logs in the Cloudflare dashboard — handy when something misbehaves.
   "observability": { "enabled": true },
@@ -30,5 +39,16 @@
       "binding": "BUCKET",
       "bucket_name": "vibe-stack-app-files"
     }
+  ],
+  // Key-value store used by the OAuth provider to hold connector tokens, grants and clients. `id` is
+  // filled in by setup, after `wrangler kv namespace create OAUTH_KV` (see the vibe-connector skill).
+  "kv_namespaces": [
+    {
+      "binding": "OAUTH_KV",
+      "id": "REPLACE_WITH_YOUR_KV_ID"
+    }
   ]
+  // OWNER_SECRET (the owner's access key) is a Worker SECRET, not listed here. Set it once with
+  // `wrangler secret put OWNER_SECRET`. The website, the REST API and the OAuth consent page all
+  // check this one value; a request that presents it is treated as the owner.
 }

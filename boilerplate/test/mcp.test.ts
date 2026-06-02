@@ -42,7 +42,9 @@ it('exposes the entry tools and runs them against real D1/R2', async () => {
   await server.close()
 })
 
-it('serves the MCP endpoint over HTTP (initialize handshake)', async () => {
+it('rejects /mcp over HTTP without an OAuth token (401)', async () => {
+  // The endpoint is gated by the OAuth provider — a connector must authorize first. The happy path
+  // (a real token reaching the tools) is covered end-to-end in oauth.test.ts.
   const res = await exports.default.fetch('https://example.com/mcp', {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
@@ -57,7 +59,5 @@ it('serves the MCP endpoint over HTTP (initialize handshake)', async () => {
       },
     }),
   })
-  expect(res.status).toBe(200)
-  // serverInfo.name comes back in the initialize result (JSON or SSE framing — match the text).
-  expect(await res.text()).toContain('vibe-stack app')
+  expect(res.status).toBe(401)
 })
