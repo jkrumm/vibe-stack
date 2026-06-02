@@ -29,8 +29,9 @@ and the website is **private** behind Cloudflare Access. The ops flavor is layer
 1. **One growing app, its own D1.** Each owner gets a single app with its own D1 database. New
    "apps" are new pages/features in the *same* project; the database becomes their personal
    knowledge base. No shared cross-app DB, no microservices, no second deploy target.
-2. **Single Worker.** The Hono API and the React SPA ship from one Worker in one `wrangler deploy`.
-   Never split into Pages + Workers. No CORS, no second URL.
+2. **Single Worker.** The Hono REST API, the MCP server, the OAuth provider, and the React SPA all
+   ship from one Worker in one `wrangler deploy`. Never split into Pages + Workers. No CORS, no second
+   URL. (Standard foundation — see verified facts: every app is a documented connector + API + OAuth.)
 3. **Hybrid skills + rules.** Cloudflare/Wrangler skills install into the owner's `~/.claude/skills/`
    (global, reused across their apps); per-project skills, `.claude/rules/`, and `test/` live under
    `boilerplate/`. The official **Mantine v9** skills are vendored into `boilerplate/.claude/skills/`.
@@ -41,14 +42,14 @@ and the website is **private** behind Cloudflare Access. The ops flavor is layer
 6. **The agent validates, then claims done.** The boilerplate ships a real test + lint + build gate
    (`npm run validate`) and `boilerplate/CLAUDE.md` makes running it non-negotiable before the agent
    tells the owner anything works. Bulletproofing the agent's self-check is a first-class goal.
-7. **Agentic operations is a flavor, not a fork.** When an owner runs a business (reservations, staff,
-   inventory), the agent operates the live D1 conversationally via `wrangler d1 execute --remote`
-   (Code tab, owner-authenticated — no public mutation API, no secret) and the website is gated by
-   **Cloudflare Access** (managed login, works on `*.workers.dev`, no domain). Domain entities + rules
-   and a German owner guide are written into the project at setup. To manage from **anywhere** (phone,
-   Cowork) the `vibe-api-mode` skill upgrades the app to an authed Hono API — one Bearer secret in the
-   Mac keychain (agent) + entered once in the website, like Hermes/argo without Tailscale; it replaces
-   Access. Single shared secret = single-owner; use Access when staff need per-person logins.
+7. **Agentic operations is a flavor, not a fork.** Every app already ships the connector + authed REST
+   API + single-owner OAuth (decision 2), so "manage from anywhere" (phone, desktop/web Chat, routines)
+   is **base**, not an upgrade — the old `vibe-api-mode` skill is folded into the boilerplate. When an
+   owner runs a business (reservations, staff, inventory), `vibe-ops-setup` layers **domain entities +
+   rules + a German owner guide** onto that base; the agent still operates the live D1 conversationally
+   via `wrangler d1 execute --remote` (Code tab, owner-authenticated) when it needs raw SQL. The
+   website is private by default via the OWNER_SECRET key-gate; for a small team needing **per-person
+   logins**, layer **Cloudflare Access** (`vibe-access`, works on `*.workers.dev`, no domain).
 
 ## Repository layout
 
@@ -56,7 +57,7 @@ and the website is **private** behind Cloudflare Access. The ops flavor is layer
 |-|-|
 | `README.md` | Human-facing intro + the one paste-line + where to literally start (Code tab → Select folder). Ends with a pointer telling Claude to read `ONBOARDING.md`. |
 | `ONBOARDING.md` | The guided, **milestone-based** 7-phase setup Claude runs for a new owner. The heart of the product. |
-| `boilerplate/` | The Cloudflare-optimized starter app (single Worker + Hono + D1 + R2, Mantine v9 + `@mantine/charts`, Vitest + Biome). Self-contained, committed, runnable. |
+| `boilerplate/` | The Cloudflare-optimized starter app (single Worker serving SPA + Hono REST API + MCP server + OAuth provider, D1 + R2, Mantine v9 + `@mantine/charts`, Vitest + Biome). Self-contained, committed, runnable. |
 | `boilerplate/CLAUDE.md` | The always-on agent contract: German communication, the validate-before-done loop, hard rules, verified facts. |
 | `boilerplate/.claude/skills/` | Per-project how-to skills (add-page/data/chart/form) + vendored Mantine v9 skills. |
 | `boilerplate/.claude/rules/` | Path-scoped edit-time conventions (`ui.md`, `worker-data.md`, `testing.md`). |
@@ -64,7 +65,7 @@ and the website is **private** behind Cloudflare Access. The ops flavor is layer
 | `boilerplate/biome.jsonc` | The single formatter/linter config. `boilerplate/.mcp.json.example` | optional chrome-devtools MCP. |
 | `skills-global/` | Global skills copied into `~/.claude/skills/`: `vibe-deploy`, `vibe-cloudflare`, `vibe-new-app`, plus the ops set — `vibe-operate` (run live D1 by talking), `vibe-ops-setup` (turn an app into a business tool), `vibe-access` (private website via Cloudflare Access), `vibe-api-mode` (authed Bearer API + contract, to manage from anywhere). |
 
-## Verified tech facts — do NOT regress (verified 2026-06-01)
+## Verified tech facts — do NOT regress (verified 2026-06-02)
 
 These were confirmed against primary docs with adversarial cross-checking. They override stale
 training knowledge. **Re-verify with `/research` before changing any of them** (the ecosystem moves).
@@ -80,12 +81,35 @@ training knowledge. **Re-verify with `/research` before changing any of them** (
   `assets.run_worker_first: ["/api/*"]` (array form needs Wrangler ≥ 4.20.0). `compatibility_date`
   must be a real recent date. **Stay on Vite 7**: Vite 8 + `@cloudflare/vite-plugin` still has open
   build-breaking issues (see "Keeping current" for the Vite+ note).
-- **Hono is not in Cloudflare's template** — add it. Worker entry is `export default app` (the Hono
-  instance, `basePath('/api')`). With `run_worker_first: ["/api/*"]` the asset layer serves the SPA
-  without invoking the Worker, so Hono needs **no** `*` SPA fallback. Bindings via
-  `new Hono<{ Bindings }>()`, read from `c.env.DB` / `c.env.BUCKET`. Validation: a `zod` schema in
-  `src/shared/schema.ts`, `safeParse`d in the route (the boilerplate does **not** use
-  `@hono/zod-validator` — it parses multipart via `c.req.parseBody()` then `safeParse`).
+- **Hono is not in Cloudflare's template** — add it. The Hono REST app lives in `src/worker/api.ts`
+  (`basePath('/api')`); `src/worker/index.ts` wraps it (+ the MCP server) in the OAuth provider as the
+  default export. With `run_worker_first` listing `/api/*`, `/mcp` and the OAuth paths, the asset layer
+  serves the SPA without invoking the Worker, so Hono needs **no** `*` SPA fallback. Bindings via
+  `new Hono<{ Bindings }>()`, read from `c.env.DB` / `c.env.BUCKET`. The REST routes document themselves
+  with **`hono-openapi 1.3.0`** (`describeRoute` + `validator` + `resolver` — NOT `@hono/zod-openapi`,
+  which forces an `OpenAPIHono` rewrite); multipart-with-file is still parsed by hand via
+  `c.req.parseBody()` then `safeParse` (the boilerplate does **not** use `@hono/zod-validator`).
+- **MCP + OpenAPI REST + single-owner OAuth is the STANDARD foundation** of every app (verified
+  2026-06-02 incl. an in-code spike), not an opt-in layer. One Worker stays one deploy:
+  `src/worker/index.ts` = `new OAuthProvider({...})` from **`@cloudflare/workers-oauth-provider` 0.7.0**
+  — auto-serves `/token`, `/register` (RFC 7591 **DCR — Claude connectors require it**) and
+  `/.well-known/oauth-authorization-server`, gates `/mcp`, routes `/authorize` (our German consent page,
+  validates `OWNER_SECRET`) + `/api/*` (the Hono app). Needs a **KV namespace `OAUTH_KV`** + a Worker
+  **secret `OWNER_SECRET`** (one shared secret = single owner; a valid token = the owner). MCP via
+  **`@hono/mcp` 0.3.0** (`StreamableHTTPTransport`, **stateless** — `sessionIdGenerator: undefined`,
+  `enableJsonResponse`, fresh server per request, **no Durable Objects**) + **`@modelcontextprotocol/sdk`
+  1.29.0**, whose tool inputs reuse the shared **Zod v4** schemas (the SDK converts v4 natively via
+  `zod/v4-mini` `toJSONSchema` — **no shim**). The SDK's WebStandard transport runs in workerd with **no
+  `nodejs_compat`**. Dual auth, one secret value: `/mcp` = OAuth 2.1 + DCR (the only thing connectors
+  accept); `/api/*` + website = Bearer. `data.ts` holds behavior once; `api.ts` + `mcp.ts` are thin
+  adapters; **photos stay REST/website-only** (binaries don't belong in tool calls). Tool descriptions
+  **< 500 chars** — consumer surfaces don't reliably honor server `instructions`/`prompts`.
+- **Consumer config (skills / Projects / global "Anweisungen") has no programmatic API** — manual UI
+  only. BUT it is **account-level**: one paste on any device applies across web/desktop/phone for that
+  account. Only **plain Chat + Cowork** need it (the Code tab + routines read the repo files). So the
+  connector covers the *data*; a small git-tracked `claude-setup/` bundle (a Project + thin global
+  instructions) covers the *behavior*, synced by a German copy-paste ritual tied to the cause that
+  changed it (`vibe-connector` / `add-data` / `vibe-ops-setup`).
 - **Testing runs in the real Workers runtime** via **`@cloudflare/vitest-pool-workers` 0.16.11**,
   which requires **vitest ^4.1.0**. The current API: config uses the **`cloudflareTest()` plugin**
   from `@cloudflare/vitest-pool-workers` (NOT the old `defineWorkersConfig`); tests
@@ -141,8 +165,10 @@ training knowledge. **Re-verify with `/research` before changing any of them** (
 ## Keeping current
 
 The boilerplate is a frozen snapshot, so it can drift. When updating: run `/research` on the moving
-pieces (Mantine, Wrangler/`@cloudflare/vite-plugin`, Hono, Cloudflare assets config, Vitest +
-`@cloudflare/vitest-pool-workers`, Biome, chrome-devtools-mcp, Claude plan + desktop facts), refresh
+pieces (Mantine, Wrangler/`@cloudflare/vite-plugin`, Hono, `hono-openapi`, Cloudflare assets config,
+Vitest + `@cloudflare/vitest-pool-workers`, Biome, **`@cloudflare/workers-oauth-provider` + `@hono/mcp`
++ `@modelcontextprotocol/sdk`** (re-run the zod-v4 ↔ MCP-SDK spike), the Claude **connector** auth
+contract + consumer-config UI click-paths, chrome-devtools-mcp, Claude plan + desktop facts), refresh
 the "Verified tech facts" block with a new date, then update `boilerplate/` and the skills to match.
 
 - **Vite+ (viteplus.dev):** evaluated 2026-06-01 → **not adopted**. It's free (MIT) but alpha
